@@ -35,6 +35,12 @@ var _file_dialog_save: FileDialog
 var _file_dialog_jacket: FileDialog
 var _file_dialog_audio: FileDialog
 
+# 播放状态
+var _is_playing: bool = false
+var _audio_player: AudioStreamPlayer
+var _playback_start_time_ms: int = 0   # Time.get_ticks_msec() 播放起始时刻
+var _playback_start_offset_ms: int = 0 # 起始时播放头位置
+
 # ============================================================
 # 初始化
 # ============================================================
@@ -62,6 +68,11 @@ func _ready() -> void:
 	# Ruler 信号
 	ruler.playhead_moved.connect(_on_playhead_moved)
 	
+	# 音频播放器
+	_audio_player = AudioStreamPlayer.new()
+	add_child(_audio_player)
+	set_process(true)
+	
 	# 菜单
 	_setup_menus()
 	_create_file_dialogs()
@@ -72,7 +83,41 @@ func _ready() -> void:
 	_update_status("就绪")
 
 func _process(_delta: float) -> void:
+	if not _is_playing:
+		return
+	
+	# 检测播放结束
+	if not _audio_player.playing:
+		_pause_playback()
+		return
+	
+	# 同步播放头 — 用独立计时避免 get_playback_position 抖动
+	var elapsed := Time.get_ticks_msec() - _playback_start_time_ms
+	var time_ms := _playback_start_offset_ms + elapsed
+	ruler.update_playhead(time_ms)
+	
+	# 平滑滚动跟随播放头（保持在屏幕 30% 处）
+	var old_scroll := EditorChartState.scroll_time
+	var w := ruler.size.x
+	var target_scroll := time_ms - int(w * 0.3 / EditorChartState.px_per_ms)
+	EditorChartState.scroll_time = int(lerpf(
+		float(EditorChartState.scroll_time),
+		float(target_scroll),
+		_delta * 8.0
+	))
+	EditorChartState.clamp_scroll()
+	# 仅在滚动位置变化时触发 Ruler 重绘（update_playhead 已触发一次）
+	if EditorChartState.scroll_time != old_scroll:
+		ruler.queue_redraw()
+
+func _unhandled_input(event: InputEvent) -> void:
 	pass
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_SPACE:
+			_toggle_playback()
+			get_viewport().set_input_as_handled()
 
 # ============================================================
 # 工具栏交互
@@ -127,6 +172,9 @@ func _on_visual_note_placed(index: int) -> void:
 
 func _on_visual_scroll_changed() -> void:
 	ruler.queue_redraw()
+	# 非播放状态下滚动轨道时，同步播放头到当前视图位置
+	if not _is_playing:
+		ruler.update_playhead(EditorChartState.scroll_time)
 
 # ============================================================
 # 属性面板回调
@@ -145,7 +193,123 @@ func _on_note_changed(index: int) -> void:
 
 func _on_playhead_moved(time_ms: int) -> void:
 	property_panel.set_meta_mode()
+	# 播放中拖动播放头：跳转播放位置并重置计时基准
+	if _is_playing:
+		_audio_player.play(float(time_ms) / 1000.0)
+		_playback_start_time_ms = Time.get_ticks_msec()
+		_playback_start_offset_ms = time_ms
 	_update_status("播放头: %d ms" % time_ms)
+
+# ============================================================
+# 播放控制
+# ============================================================
+
+func _toggle_playback() -> void:
+	if _is_playing:
+		_pause_playback()
+	else:
+		_start_playback()
+
+func _start_playback() -> void:
+	if EditorChartState.audio_path.is_empty():
+		_update_status("无音频文件，无法播放")
+		return
+	
+	var stream := _get_audio_stream()
+	if stream == null:
+		_update_status("无法加载音频文件")
+		return
+	
+	_audio_player.stream = stream
+	_audio_player.play(float(ruler.playhead_time) / 1000.0)
+	
+	# 记录独立计时起点（避免音频回调抖动影响播放头绘制）
+	_playback_start_time_ms = Time.get_ticks_msec()
+	_playback_start_offset_ms = ruler.playhead_time
+	
+	_is_playing = true
+	_update_status("播放中...")
+
+func _pause_playback() -> void:
+	_audio_player.stop()
+	_is_playing = false
+	_update_status("已暂停")
+
+func _stop_playback() -> void:
+	_audio_player.stop()
+	_is_playing = false
+	ruler.update_playhead(0)
+	EditorChartState.scroll_time = 0
+	_update_status("播放结束")
+
+## 获取 AudioStream：优先 ResourceLoader，回退手动构建 AudioStreamWAV
+func _get_audio_stream() -> AudioStream:
+	# 尝试 ResourceLoader
+	var resource: Resource = load(EditorChartState.audio_path)
+	if resource != null and resource is AudioStream:
+		return resource as AudioStream
+	
+	# 回退：手动解析 WAV 并构建 AudioStreamWAV
+	return _build_wav_stream_from_path()
+
+## 从文件路径手动解析 WAV 并构建 AudioStreamWAV（无需 .import）
+func _build_wav_stream_from_path() -> AudioStreamWAV:
+	var file := _open_audio_file()
+	if file == null:
+		return null
+	
+	if file.get_buffer(4).get_string_from_ascii() != "RIFF":
+		file.close()
+		return null
+	file.get_32()
+	if file.get_buffer(4).get_string_from_ascii() != "WAVE":
+		file.close()
+		return null
+	
+	var sample_rate := 0
+	var num_channels := 1
+	var bits_per_sample := 16
+	var data_offset := 0
+	var data_size := 0
+	var file_end := file.get_length()
+	
+	while file.get_position() + 8 <= file_end:
+		var chunk_id := file.get_buffer(4).get_string_from_ascii()
+		var chunk_size := file.get_32()
+		
+		if chunk_id == "fmt ":
+			var audio_format := file.get_16()
+			if audio_format != 1:
+				file.close()
+				return null
+			num_channels = file.get_16()
+			sample_rate = file.get_32()
+			file.get_32()
+			file.get_16()
+			bits_per_sample = file.get_16()
+			if chunk_size > 16:
+				file.get_buffer(chunk_size - 16)
+		elif chunk_id == "data":
+			data_offset = file.get_position()
+			data_size = chunk_size
+			break
+		else:
+			file.get_buffer(chunk_size)
+	
+	if sample_rate <= 0 or data_size <= 0:
+		file.close()
+		return null
+	
+	file.seek(data_offset)
+	var raw_data := file.get_buffer(data_size)
+	file.close()
+	
+	var wav := AudioStreamWAV.new()
+	wav.data = raw_data
+	wav.format = AudioStreamWAV.FORMAT_16_BITS if bits_per_sample == 16 else AudioStreamWAV.FORMAT_8_BITS
+	wav.mix_rate = sample_rate
+	wav.stereo = num_channels >= 2
+	return wav
 
 # ============================================================
 # 菜单设置
@@ -207,6 +371,7 @@ func _create_file_dialogs() -> void:
 # ============================================================
 
 func _new_chart() -> void:
+	_stop_playback()
 	EditorChartState.new_chart()
 	property_panel.set_meta_mode()
 	visual.deselect()
@@ -214,6 +379,7 @@ func _new_chart() -> void:
 	_update_status("新建谱面")
 
 func _on_open_file_selected(path: String) -> void:
+	_stop_playback()
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		_update_status("无法打开文件: %s" % path)
@@ -275,6 +441,7 @@ func _on_audio_browse() -> void:
 	_file_dialog_audio.popup_centered()
 
 func _on_audio_file_selected(path: String) -> void:
+	_pause_playback()
 	EditorChartState.audio_path = path
 	_update_audio_duration()
 	property_panel.refresh()
@@ -286,15 +453,167 @@ func _on_audio_file_selected(path: String) -> void:
 ## 尝试加载音频文件并获取时长，设置滚动边界
 func _update_audio_duration() -> void:
 	EditorChartState.audio_duration_ms = 0
+	EditorChartState.waveform_samples.clear()
 	if EditorChartState.audio_path.is_empty():
 		return
 	
-	# 尝试加载音频资源并获取时长
+	# 优先用 FileAccess 直接解析 WAV（无需 .import）
+	if _open_wav_for_parsing():
+		return
+	
+	# 回退：通过 ResourceLoader 加载（适用于已导入的非 WAV 格式）
 	var resource: Resource = load(EditorChartState.audio_path)
 	if resource != null and resource is AudioStream:
 		var duration_sec := (resource as AudioStream).get_length()
 		if duration_sec > 0:
 			EditorChartState.audio_duration_ms = int(duration_sec * 1000.0)
+		if resource is AudioStreamWAV:
+			_generate_waveform_from_stream(resource as AudioStreamWAV)
+
+# ============================================================
+# WAV 直接解析（绕过 Godot 导入系统）
+# ============================================================
+
+## 解析 EditorChartState.audio_path 指向的 WAV 文件，获取时长和波形
+## 返回 true 表示成功解析并已设置 waveform_samples
+func _open_wav_for_parsing() -> bool:
+	var file := _open_audio_file()
+	if file == null:
+		return false
+	
+	# 验证 RIFF/WAVE 头
+	if file.get_buffer(4).get_string_from_ascii() != "RIFF":
+		file.close()
+		return false
+	file.get_32()  # 文件总大小（不含 RIFF 头）
+	if file.get_buffer(4).get_string_from_ascii() != "WAVE":
+		file.close()
+		return false
+	
+	# 查找 fmt 和 data 块
+	var sample_rate := 0
+	var num_channels := 1
+	var bits_per_sample := 16
+	var data_offset := 0
+	var data_size := 0
+	var file_end := file.get_length()
+	
+	while file.get_position() + 8 <= file_end:
+		var chunk_id := file.get_buffer(4).get_string_from_ascii()
+		var chunk_size := file.get_32()
+		
+		if chunk_id == "fmt ":
+			var audio_format := file.get_16()
+			if audio_format != 1:  # 仅支持 PCM
+				file.close()
+				return false
+			num_channels = file.get_16()
+			sample_rate = file.get_32()
+			file.get_32()  # byte_rate
+			file.get_16()  # block_align
+			bits_per_sample = file.get_16()
+			if chunk_size > 16:
+				file.get_buffer(chunk_size - 16)
+		elif chunk_id == "data":
+			data_offset = file.get_position()
+			data_size = chunk_size
+			break
+		else:
+			file.get_buffer(chunk_size)
+	
+	if sample_rate <= 0 or data_size <= 0:
+		file.close()
+		return false
+	
+	# 计算时长
+	var bytes_per_sample := bits_per_sample / 8
+	var bytes_per_frame := bytes_per_sample * num_channels
+	var total_frames := data_size / bytes_per_frame
+	var duration_sec := float(total_frames) / sample_rate
+	EditorChartState.audio_duration_ms = int(duration_sec * 1000.0)
+	
+	# 读取 PCM 数据
+	file.seek(data_offset)
+	var raw_data := file.get_buffer(data_size)
+	file.close()
+	
+	# 生成波形
+	_downsample_waveform(raw_data, total_frames, sample_rate, num_channels, bits_per_sample)
+	return true
+
+## 将 PCM 原始数据降采样为 1000Hz 的波形振幅数组
+func _downsample_waveform(raw_data: PackedByteArray, total_frames: int, sample_rate: int,
+		num_channels: int, bits_per_sample: int) -> void:
+	var output_rate := 1000  # 每毫秒一个采样点
+	var duration_sec := float(total_frames) / sample_rate
+	var num_output := maxi(int(duration_sec * output_rate), 1)
+	var result := PackedFloat32Array()
+	result.resize(num_output)
+	
+	var bytes_per_sample := bits_per_sample / 8
+	var bytes_per_frame := bytes_per_sample * num_channels
+	var frames_per_output := float(total_frames) / float(num_output)
+	var is_16bit := bits_per_sample == 16
+	
+	for i in range(num_output):
+		var start_frame := int(i * frames_per_output)
+		var end_frame := int(min(float(total_frames), (i + 1) * frames_per_output))
+		var peak: float = 0.0
+		
+		for f in range(start_frame, end_frame):
+			var offset := f * bytes_per_frame
+			var frame_sum: float = 0.0
+			
+			for ch in range(num_channels):
+				var ch_offset := offset + ch * bytes_per_sample
+				var sample: float
+				if is_16bit:
+					var lo := raw_data[ch_offset] as int
+					var hi := raw_data[ch_offset + 1] as int
+					var s16 := (hi << 8) | lo
+					if s16 >= 32768:
+						s16 -= 65536
+					sample = float(s16) / 32768.0
+				else:
+					sample = float(raw_data[ch_offset]) / 128.0 - 1.0
+				frame_sum += sample
+			
+			var avg := frame_sum / float(num_channels)
+			peak = maxf(peak, absf(avg))
+		
+		result[i] = peak
+	
+	EditorChartState.waveform_samples = result
+
+## 将 res:// 路径转为文件系统绝对路径后打开
+func _open_audio_file() -> FileAccess:
+	var path := EditorChartState.audio_path
+	if path.begins_with("res://"):
+		path = ProjectSettings.globalize_path(path)
+	return FileAccess.open(path, FileAccess.READ)
+
+# ============================================================
+# ResourceLoader 回退路径
+# ============================================================
+
+## 从 AudioStreamWAV 生成波形采样（降采样至 1000Hz）
+func _generate_waveform_from_stream(stream: AudioStreamWAV) -> void:
+	var data := stream.data
+	if data.is_empty():
+		return
+	
+	var is_stereo := stream.stereo
+	var mix_rate := stream.mix_rate
+	var fmt := stream.format
+	
+	var bytes_per_sample := 2 if fmt == AudioStreamWAV.FORMAT_16_BITS else 1
+	var num_channels := 2 if is_stereo else 1
+	var bytes_per_frame := bytes_per_sample * num_channels
+	var total_frames := data.size() / bytes_per_frame
+	if total_frames <= 0:
+		return
+	
+	_downsample_waveform(data, total_frames, mix_rate, num_channels, bytes_per_sample * 8)
 
 func _update_status(text: String) -> void:
 	if status_label:

@@ -32,6 +32,9 @@ var px_per_ms: float = 0.3
 ## 音频时长(ms)，0 表示无边界
 var audio_duration_ms: int = 0
 
+## 波形振幅数据（归一化 0.0-1.0），采样率 1000Hz（索引即毫秒）
+var waveform_samples: PackedFloat32Array = []
+
 # ============================================================
 # 文件路径
 # ============================================================
@@ -125,4 +128,6 @@ func new_chart() -> void:
 	clipboard.clear()
 	scroll_time = 0
 	px_per_ms = 0.3
+	audio_duration_ms = 0
+	waveform_samples.clear()
 	current_file_path = ""

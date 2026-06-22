@@ -75,18 +75,26 @@ var _prev_scroll_time: int = 0
 
 func _process(delta: float) -> void:
 	# 平滑滚动插值
-	if _scroll_initialized:
-		# 检测外部修改（Ruler 等直接改了 scroll_time）
-		if EditorChartState.scroll_time != _prev_scroll_time:
-			_target_scroll_time = EditorChartState.scroll_time
-		
-		var diff := _target_scroll_time - EditorChartState.scroll_time
-		if absi(diff) <= 1:
-			EditorChartState.scroll_time = _target_scroll_time
-		else:
-			EditorChartState.scroll_time += int(float(diff) * SCROLL_SMOOTH * 60.0 * delta + signf(float(diff)))
-		_prev_scroll_time = EditorChartState.scroll_time
-	queue_redraw()
+	if not _scroll_initialized:
+		return
+	
+	# 检测外部修改（Ruler 等直接改了 scroll_time）
+	if EditorChartState.scroll_time != _prev_scroll_time:
+		_target_scroll_time = EditorChartState.scroll_time
+	
+	var diff := _target_scroll_time - EditorChartState.scroll_time
+	if absi(diff) <= 1:
+		EditorChartState.scroll_time = _target_scroll_time
+	else:
+		EditorChartState.scroll_time += int(float(diff) * SCROLL_SMOOTH * 60.0 * delta + signf(float(diff)))
+	
+	# 仅在滚动位置实际变化时通知 Ruler 并重绘
+	var changed := EditorChartState.scroll_time != _prev_scroll_time
+	_prev_scroll_time = EditorChartState.scroll_time
+	
+	if changed:
+		emit_signal("scroll_changed")
+		queue_redraw()
 
 # ============================================================
 # 坐标映射 — 纵向轨道（Y=时间，X=轨道列）

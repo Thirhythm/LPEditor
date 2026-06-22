@@ -26,10 +26,6 @@ var notes: Array[Dictionary] = []
 func _ready() -> void:
 	queue_redraw()
 	set_process_input(true)
-	set_process(true)
-
-func _process(_delta: float) -> void:
-	queue_redraw()
 
 # ============================================================
 # 坐标映射
@@ -54,17 +50,77 @@ func _draw() -> void:
 	# 1. 背景
 	draw_rect(Rect2(0, 0, w, h), Color(0.12, 0.12, 0.14), true)
 	
-	# 2. 轨道缩略图
+	# 2. 音频波形
+	_draw_waveform(w)
+	
+	# 3. 轨道缩略图
 	_draw_track_thumbnail(w)
 	
-	# 3. 播放头
+	# 4. 播放头
 	_draw_playhead(w, h)
 	
-	# 4. 时间指示器
+	# 5. 时间指示器
 	_draw_time_indicator(w, h)
 	
-	# 5. 底部分隔线
+	# 6. 底部分隔线
 	draw_line(Vector2(0, h), Vector2(w, h), Color(0.3, 0.3, 0.3), 1.0)
+
+## 绘制音频波形图 — 填充式半透明波形，覆盖缩略图区域
+func _draw_waveform(w: float) -> void:
+	var samples := EditorChartState.waveform_samples
+	if samples.is_empty():
+		return
+	
+	var wave_area_top: float = 4.0
+	var wave_h := THUMBNAIL_HEIGHT - 4.0
+	var mid_y := wave_area_top + wave_h / 2.0
+	var half_h := wave_h / 2.0 - 2.0  # 振幅余量
+	
+	var view_start := EditorChartState.scroll_time  # ms
+	var view_end := view_start + int(w / EditorChartState.px_per_ms)
+	
+	# 限制在有效范围内（采样索引即毫秒）
+	var s0 := clampi(view_start, 0, samples.size() - 1)
+	var s1 := clampi(view_end, 0, samples.size() - 1)
+	
+	if s1 <= s0:
+		return
+	
+	# 每像素列涵盖的毫秒数（取峰值而非逐点绘制）
+	var ms_per_px := maxi(1, ceili(1.0 / EditorChartState.px_per_ms))
+	var pts_upper := PackedVector2Array()
+	var pts_lower := PackedVector2Array()
+	
+	var t := s0
+	while t <= s1:
+		var x := time_to_x(t)
+		var chunk_end := mini(t + ms_per_px, s1 + 1)
+		
+		var peak: float = 0.0
+		for i in range(t, chunk_end):
+			peak = maxf(peak, samples[i])
+		
+		var amp := peak * half_h
+		pts_upper.append(Vector2(x, mid_y - amp))
+		pts_lower.append(Vector2(x, mid_y + amp))
+		
+		t = chunk_end
+	
+	# 构建填充多边形：上半从左到右，下半从右到左
+	var polygon := PackedVector2Array()
+	polygon.append_array(pts_upper)
+	for i in range(pts_lower.size() - 1, -1, -1):
+		polygon.append(pts_lower[i])
+	
+	# 填充波形
+	draw_colored_polygon(polygon, Color(0.25, 0.55, 0.85, 0.28))
+	
+	# 上包络描边
+	draw_polyline(pts_upper, Color(0.35, 0.65, 0.95, 0.50), 1.0)
+	
+	# 中心线
+	draw_line(Vector2(time_to_x(s0), mid_y), Vector2(time_to_x(s1), mid_y),
+		Color(0.25, 0.55, 0.85, 0.20), 1.0)
 
 ## 绘制轨道缩略图 — 4 条横栏 + 音符标记
 func _draw_track_thumbnail(w: float) -> void:
@@ -76,9 +132,9 @@ func _draw_track_thumbnail(w: float) -> void:
 		var col := i + 1
 		var y0: float = track_area_top + i * track_h
 		
-		# 轨道背景（横栏）
+		# 轨道背景（横栏） — 低透明度，让波形透出
 		draw_rect(Rect2(0, y0, w, track_h),
-			TRACK_COLORS[i] * Color(0.3, 0.3, 0.3, 0.5), true)
+			TRACK_COLORS[i] * Color(0.3, 0.3, 0.3, 0.3), true)
 		
 		# 轨道边框
 		draw_rect(Rect2(0, y0, w, track_h),
