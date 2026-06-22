@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://cwjayqxla1uw6"]
+
+[ext_resource type="Script" uid="uid://bu7pyjt5b4ijv" path="res://Script/Widget/list.gd" id="1_tw3k0"]
+
+[node name="List" type="VBoxContainer" unique_id=472660185]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_tw3k0")

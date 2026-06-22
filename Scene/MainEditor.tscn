@@ -1,0 +1,209 @@
+[gd_scene format=3 uid="uid://duwn1b63ojpal"]
+
+[ext_resource type="Script" uid="uid://8ixca2t5aw1a" path="res://Script/Widget/visual.gd" id="2_81a4y"]
+[ext_resource type="Script" uid="uid://dlebwk84r21q8" path="res://Script/Scene/main_editor.gd" id="2_k3cff"]
+[ext_resource type="Script" uid="uid://hpiyx5i2mto6" path="res://Script/Widget/ruler.gd" id="3_k3cff"]
+[ext_resource type="Script" uid="uid://cv0o83ugbak7r" path="res://Script/Widget/property_panel.gd" id="4_0j7il"]
+[ext_resource type="PackedScene" uid="uid://cwjayqxla1uw6" path="res://Scene/Widget/List.tscn" id="4_sv8ax"]
+[ext_resource type="Script" uid="uid://bs6jbtjqkjov" path="res://Script/note_position_calculator.gd" id="5_0j7il"]
+[ext_resource type="Script" uid="uid://dw6tq6s5lb40f" path="res://Script/editor_position_calculator.gd" id="6_6jwj6"]
+
+[node name="MainEditor" type="Control" unique_id=788406961]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_k3cff")
+
+[node name="Panel" type="Control" parent="." unique_id=1793554399]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel" unique_id=56041241]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MenuBar" type="MenuBar" parent="Panel/VBoxContainer" unique_id=389748028]
+layout_mode = 2
+flat = true
+
+[node name="File" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=1994520241]
+title = "文件"
+item_count = 5
+item_0/text = "新建"
+item_0/id = 0
+item_1/text = "打开"
+item_1/id = 1
+item_2/id = 4
+item_2/separator = true
+item_3/text = "保存"
+item_3/id = 2
+item_4/text = "另存为"
+item_4/id = 3
+
+[node name="Edit" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=1352455400]
+title = "编辑"
+item_count = 2
+item_0/text = "撤销"
+item_0/id = 0
+item_1/text = "重做"
+item_1/id = 1
+
+[node name="View" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=1519145885]
+title = "视图"
+
+[node name="Play" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=1295062555]
+title = "播放"
+item_count = 3
+item_0/text = "播放"
+item_0/id = 0
+item_1/text = "暂停"
+item_1/id = 1
+item_2/text = "停止"
+item_2/id = 2
+
+[node name="Help" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=943394035]
+title = "帮助"
+item_count = 2
+item_0/text = "手册"
+item_0/id = 0
+item_1/text = "访问项目仓库"
+item_1/id = 1
+
+[node name="Ruler" type="Control" parent="Panel/VBoxContainer" unique_id=1664964843]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+script = ExtResource("3_k3cff")
+
+[node name="ParkPanel" type="Control" parent="Panel/VBoxContainer" unique_id=1833356051]
+custom_minimum_size = Vector2(0, 470)
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel/VBoxContainer/ParkPanel" unique_id=1299588457]
+layout_mode = 0
+offset_right = 4.0
+
+[node name="List" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer" unique_id=1014261428 instance=ExtResource("4_sv8ax")]
+layout_mode = 2
+item = Array[Dictionary]([{
+"icon": "res://Asset/Icon/music-note.svg",
+"text": "音符"
+}, {
+"icon": "res://Asset/Icon/play-circle-fill.svg",
+"text": "行为"
+}])
+arrangement = 1
+
+[node name="List2" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer" unique_id=1199178973 instance=ExtResource("4_sv8ax")]
+layout_mode = 2
+
+[node name="Property" type="Control" parent="Panel/VBoxContainer/ParkPanel" unique_id=1943326314]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
+offset_bottom = 40.0
+grow_horizontal = 0
+script = ExtResource("4_0j7il")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel" unique_id=512145637]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -39.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Label" type="Label" parent="Panel/HBoxContainer" unique_id=12125902]
+layout_mode = 2
+text = "已暂停."
+
+[node name="TrackUI" type="Control" parent="." unique_id=2144555481]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 400.0
+offset_top = 100.0
+offset_right = -400.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="TrackUI" unique_id=1532471473]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -176.0
+offset_top = -450.0
+offset_right = 176.0
+offset_bottom = 450.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Generator" type="CenterContainer" parent="TrackUI/CenterContainer" unique_id=1321507728]
+layout_mode = 2
+
+[node name="Tracks" type="HBoxContainer" parent="TrackUI/CenterContainer/Generator" unique_id=475079861]
+layout_mode = 2
+
+[node name="Track1" type="Control" parent="TrackUI/CenterContainer/Generator/Tracks" unique_id=421893459]
+custom_minimum_size = Vector2(85, 900)
+layout_mode = 2
+
+[node name="Track2" type="Control" parent="TrackUI/CenterContainer/Generator/Tracks" unique_id=1783637600]
+custom_minimum_size = Vector2(85, 720)
+layout_mode = 2
+
+[node name="Track3" type="Control" parent="TrackUI/CenterContainer/Generator/Tracks" unique_id=1372000679]
+custom_minimum_size = Vector2(85, 720)
+layout_mode = 2
+
+[node name="Track4" type="Control" parent="TrackUI/CenterContainer/Generator/Tracks" unique_id=248683462]
+custom_minimum_size = Vector2(85, 720)
+layout_mode = 2
+
+[node name="Visual" type="VBoxContainer" parent="TrackUI/CenterContainer" unique_id=464763186]
+layout_mode = 2
+script = ExtResource("2_81a4y")
+
+[node name="Tracks" type="HBoxContainer" parent="TrackUI/CenterContainer/Visual" unique_id=1794528761]
+layout_mode = 2
+
+[node name="Track1" type="Panel" parent="TrackUI/CenterContainer/Visual/Tracks" unique_id=2147017855]
+custom_minimum_size = Vector2(85, 900)
+layout_mode = 2
+
+[node name="Track2" type="Panel" parent="TrackUI/CenterContainer/Visual/Tracks" unique_id=1306231322]
+custom_minimum_size = Vector2(85, 550)
+layout_mode = 2
+
+[node name="Track3" type="Panel" parent="TrackUI/CenterContainer/Visual/Tracks" unique_id=1800401754]
+custom_minimum_size = Vector2(85, 550)
+layout_mode = 2
+
+[node name="Track4" type="Panel" parent="TrackUI/CenterContainer/Visual/Tracks" unique_id=316667950]
+custom_minimum_size = Vector2(85, 550)
+layout_mode = 2
+
+[node name="NotePositionCalculatior" type="Node" parent="." unique_id=1987079142]
+script = ExtResource("5_0j7il")
+
+[node name="EditorPositionCalculator" type="Node" parent="." unique_id=1255599556]
+script = ExtResource("6_6jwj6")
