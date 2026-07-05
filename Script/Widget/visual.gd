@@ -126,12 +126,12 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		if not event.ctrl_pressed and not event.meta_pressed:
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				_target_scroll_time -= int(200 / maxf(EditorChartState.px_per_ms, 0.01))
+				_target_scroll_time += int(200 / maxf(EditorChartState.px_per_ms, 0.01))
 				_target_scroll_time = clampi(_target_scroll_time, 0, EditorChartState.get_max_scroll_time())
 				get_viewport().set_input_as_handled()
 				return
 			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				_target_scroll_time += int(200 / maxf(EditorChartState.px_per_ms, 0.01))
+				_target_scroll_time -= int(200 / maxf(EditorChartState.px_per_ms, 0.01))
 				_target_scroll_time = clampi(_target_scroll_time, 0, EditorChartState.get_max_scroll_time())
 				get_viewport().set_input_as_handled()
 				return
