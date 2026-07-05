@@ -1,23 +1,19 @@
 extends Control
 class_name PropertyPanel
 
-## 面板展开宽度
+# 属性面板组件：编辑谱面元数据和音符属性
+# 支持折叠/展开，分为元数据模式（meta）和音符编辑模式（note）
+
 const EXPANDED_WIDTH: float = 280.0
-## 面板收起宽度
 const COLLAPSED_WIDTH: float = 32.0
 
-## 当前选中的音符（空字典表示未选中）
 var selected_note: Dictionary = {}
-## 当前选中的音符索引（-1 表示未选中）
 var selected_note_index: int = -1
 
-# ============================================================
-# UI 节点引用
-# ============================================================
 var _toggle_button: Button
 var _content_container: VBoxContainer
 
-# 谱面元信息控件
+# --- 元数据 UI 控件 ---
 var _meta_container: VBoxContainer
 var _title_edit: LineEdit
 var _jacket_display: TextureRect
@@ -30,8 +26,10 @@ var _producer_edit: LineEdit
 var _vocalist_edit: LineEdit
 var _creator_edit: LineEdit
 var _difficulty_option: OptionButton
+var _quantize_option: OptionButton
+var _snap_toggle: CheckBox
 
-# 音符属性控件
+# --- 音符属性 UI 控件 ---
 var _note_container: VBoxContainer
 var _note_type_option: OptionButton
 var _note_time_spin: SpinBox
@@ -41,13 +39,11 @@ var _hold_duration_spin: SpinBox
 var _heart_map_container: Control
 var _heart_map_edit: LineEdit
 
-# 状态
-var _is_expanded: bool = true
-var _mode: int = 0  # 0: 元信息模式, 1: 音符模式
+# --- 编辑器设置（常驻面板） ---
+var _settings_container: VBoxContainer
 
-# ============================================================
-# 生命周期
-# ============================================================
+var _is_expanded: bool = true
+var _mode: int = 0	# 0: meta, 1: note
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(EXPANDED_WIDTH, 0)
@@ -55,37 +51,32 @@ func _ready() -> void:
 	_switch_to_meta_mode()
 
 func _build_ui() -> void:
-	# 顶层 HBoxContainer — 按钮 + 内容
 	var hbox := HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(hbox)
-	
-	# 折叠按钮
+
 	_toggle_button = Button.new()
 	_toggle_button.text = "<"
 	_toggle_button.custom_minimum_size = Vector2(24, 0)
 	_toggle_button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_toggle_button.pressed.connect(_on_toggle_pressed)
 	hbox.add_child(_toggle_button)
-	
-	# 内容容器
+
 	_content_container = VBoxContainer.new()
 	_content_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	hbox.add_child(_content_container)
-	
-	# ---- 谱面元信息容器 ----
+
+	# --- 元数据区域 ---
 	_meta_container = VBoxContainer.new()
 	_meta_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content_container.add_child(_meta_container)
-	
-	# 标题
+
 	_add_section_label(_meta_container, "谱面名称")
 	_title_edit = _add_line_edit(_meta_container, "Title")
 	_title_edit.text_changed.connect(_on_title_changed)
-	
-	# 曲绘
+
 	_add_section_label(_meta_container, "曲绘")
 	_jacket_display = TextureRect.new()
 	_jacket_display.custom_minimum_size = Vector2(0, 120)
@@ -93,7 +84,7 @@ func _build_ui() -> void:
 	_jacket_display.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_jacket_display.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_meta_container.add_child(_jacket_display)
-	
+
 	var jacket_path_hbox := HBoxContainer.new()
 	_meta_container.add_child(jacket_path_hbox)
 	_jacket_path_edit = _add_line_edit(jacket_path_hbox, "曲绘路径...")
@@ -104,8 +95,7 @@ func _build_ui() -> void:
 	_jacket_browse.custom_minimum_size = Vector2(32, 0)
 	_jacket_browse.pressed.connect(_on_jacket_browse_pressed)
 	jacket_path_hbox.add_child(_jacket_browse)
-	
-	# 音频
+
 	_add_section_label(_meta_container, "音频文件")
 	var audio_path_hbox := HBoxContainer.new()
 	_meta_container.add_child(audio_path_hbox)
@@ -117,8 +107,7 @@ func _build_ui() -> void:
 	_audio_browse.custom_minimum_size = Vector2(32, 0)
 	_audio_browse.pressed.connect(_on_audio_browse_pressed)
 	audio_path_hbox.add_child(_audio_browse)
-	
-	# BPM
+
 	_add_section_label(_meta_container, "BPM")
 	_bpm_spin = SpinBox.new()
 	_bpm_spin.min_value = 1.0
@@ -127,23 +116,19 @@ func _build_ui() -> void:
 	_bpm_spin.value = EditorChartState.bpm
 	_bpm_spin.value_changed.connect(_on_bpm_changed)
 	_meta_container.add_child(_bpm_spin)
-	
-	# 制作人
+
 	_add_section_label(_meta_container, "制作人 (Producer)")
 	_producer_edit = _add_line_edit(_meta_container, "Producer")
 	_producer_edit.text_changed.connect(_on_producer_changed)
-	
-	# 歌手
+
 	_add_section_label(_meta_container, "歌手 (Vocalist)")
 	_vocalist_edit = _add_line_edit(_meta_container, "Vocalist")
 	_vocalist_edit.text_changed.connect(_on_vocalist_changed)
-	
-	# 谱面作者
+
 	_add_section_label(_meta_container, "谱面作者 (Creator)")
 	_creator_edit = _add_line_edit(_meta_container, "Creator")
 	_creator_edit.text_changed.connect(_on_creator_changed)
-	
-	# 难度
+
 	_add_section_label(_meta_container, "难度")
 	_difficulty_option = OptionButton.new()
 	_difficulty_option.add_item("EZ (简单)")
@@ -151,14 +136,13 @@ func _build_ui() -> void:
 	_difficulty_option.add_item("HD (困难)")
 	_difficulty_option.item_selected.connect(_on_difficulty_changed)
 	_meta_container.add_child(_difficulty_option)
-	
-	# ---- 音符属性容器 ----
+
+	# --- 音符属性区域 ---
 	_note_container = VBoxContainer.new()
 	_note_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_note_container.visible = false
 	_content_container.add_child(_note_container)
-	
-	# 音符类型
+
 	_add_section_label(_note_container, "音符类型")
 	_note_type_option = OptionButton.new()
 	_note_type_option.add_item("tap (蓝键)")
@@ -168,8 +152,7 @@ func _build_ui() -> void:
 	_note_type_option.add_item("heart (心键)")
 	_note_type_option.item_selected.connect(_on_note_type_changed)
 	_note_container.add_child(_note_type_option)
-	
-	# 判定时间
+
 	_add_section_label(_note_container, "判定时间 (ms)")
 	_note_time_spin = SpinBox.new()
 	_note_time_spin.min_value = 0.0
@@ -177,8 +160,7 @@ func _build_ui() -> void:
 	_note_time_spin.step = 1.0
 	_note_time_spin.value_changed.connect(_on_note_time_changed)
 	_note_container.add_child(_note_time_spin)
-	
-	# 轨道
+
 	_add_section_label(_note_container, "轨道")
 	_note_column_spin = SpinBox.new()
 	_note_column_spin.min_value = 1.0
@@ -186,16 +168,15 @@ func _build_ui() -> void:
 	_note_column_spin.step = 1.0
 	_note_column_spin.value_changed.connect(_on_note_column_changed)
 	_note_container.add_child(_note_column_spin)
-	
-	# hold 持续时间（默认隐藏）
+
+	# hold 类型的持续时长设置
 	_hold_duration_container = Control.new()
 	_hold_duration_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_note_container.add_child(_hold_duration_container)
-	
+
 	var dur_vbox := VBoxContainer.new()
 	dur_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hold_duration_container.add_child(dur_vbox)
-	
 	_add_section_label(dur_vbox, "持续时间 (ms)")
 	_hold_duration_spin = SpinBox.new()
 	_hold_duration_spin.min_value = 1.0
@@ -203,31 +184,61 @@ func _build_ui() -> void:
 	_hold_duration_spin.step = 1.0
 	_hold_duration_spin.value_changed.connect(_on_hold_duration_changed)
 	dur_vbox.add_child(_hold_duration_spin)
-	
-	# heart 轨道映射（默认隐藏）
+
+	# heart 类型的轨道映射设置
 	_heart_map_container = Control.new()
 	_heart_map_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_note_container.add_child(_heart_map_container)
-	
+
 	var map_vbox := VBoxContainer.new()
 	map_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_heart_map_container.add_child(map_vbox)
-	
 	_add_section_label(map_vbox, "轨道映射 (map)")
 	_heart_map_edit = LineEdit.new()
 	_heart_map_edit.placeholder_text = "e.g. 4,2,3,1"
 	_heart_map_edit.text_changed.connect(_on_heart_map_changed)
 	map_vbox.add_child(_heart_map_edit)
 
-# ============================================================
-# UI 构建辅助
-# ============================================================
+	# --- 编辑器设置（常驻） ---
+	_settings_container = VBoxContainer.new()
+	_settings_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content_container.add_child(_settings_container)
+
+	var sep := HSeparator.new()
+	sep.custom_minimum_size = Vector2(0, 8)
+	_settings_container.add_child(sep)
+
+	_add_section_label(_settings_container, "量化")
+	_quantize_option = OptionButton.new()
+	_quantize_option.add_item("1/2")
+	_quantize_option.add_item("1/4")
+	_quantize_option.add_item("1/5")
+	_quantize_option.add_item("1/6")
+	_quantize_option.add_item("1/7")
+	_quantize_option.add_item("1/8")
+	_quantize_option.add_item("1/9")
+	_quantize_option.add_item("1/10")
+	_quantize_option.add_item("1/12")
+	_quantize_option.add_item("1/16")
+	_quantize_option.add_item("1/32")
+	_quantize_option.add_item("1/48")
+	_quantize_option.item_selected.connect(_on_quantize_changed)
+	_settings_container.add_child(_quantize_option)
+
+	_add_section_label(_settings_container, "音符吸附")
+	_snap_toggle = CheckBox.new()
+	_snap_toggle.text = "启用"
+	_snap_toggle.button_pressed = EditorChartState.snap_enabled
+	_snap_toggle.toggled.connect(_on_snap_toggled)
+	_settings_container.add_child(_snap_toggle)
+
+# --- UI 构建辅助 ---
 
 func _add_section_label(parent: Control, text: String) -> void:
 	var margin := Control.new()
 	margin.custom_minimum_size = Vector2(0, 8)
 	parent.add_child(margin)
-	
+
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 12)
@@ -241,36 +252,36 @@ func _add_line_edit(parent: Control, placeholder: String) -> LineEdit:
 	parent.add_child(le)
 	return le
 
-# ============================================================
-# 模式切换
-# ============================================================
+# --- 模式切换 ---
 
 func _switch_to_meta_mode() -> void:
 	_mode = 0
 	_meta_container.visible = true
 	_note_container.visible = false
 	_refresh_meta_fields()
+	_refresh_settings_fields()
 
 func _switch_to_note_mode() -> void:
 	_mode = 1
 	_meta_container.visible = false
 	_note_container.visible = true
 	_refresh_note_fields()
+	_refresh_settings_fields()
 
-# ============================================================
-# 刷新界面
-# ============================================================
+# --- 字段刷新 ---
 
 func _refresh_meta_fields() -> void:
+	_block_meta_edit_signals(true)
 	_title_edit.text = EditorChartState.title
 	_producer_edit.text = EditorChartState.producer
 	_vocalist_edit.text = EditorChartState.vocalist
 	_creator_edit.text = EditorChartState.creator
-	_bpm_spin.set_value_no_signal(EditorChartState.bpm)
 	_jacket_path_edit.text = EditorChartState.jacket_path
 	_audio_path_edit.text = EditorChartState.audio_path
-	
-	# 难度选择（阻塞信号避免触发 _on_difficulty_changed）
+	_block_meta_edit_signals(false)
+
+	_bpm_spin.set_value_no_signal(EditorChartState.bpm)
+
 	match EditorChartState.difficulty:
 		"NM":
 			_difficulty_option.set_block_signals(true)
@@ -284,18 +295,38 @@ func _refresh_meta_fields() -> void:
 			_difficulty_option.set_block_signals(true)
 			_difficulty_option.select(0)
 			_difficulty_option.set_block_signals(false)
-	
-	# 加载曲绘缩略图
+
 	if not EditorChartState.jacket_path.is_empty() and ResourceLoader.exists(EditorChartState.jacket_path):
 		var tex := load(EditorChartState.jacket_path)
 		if tex:
 			_jacket_display.texture = tex
 
+func _refresh_settings_fields() -> void:
+	var denom_to_idx: Dictionary = {
+		2: 0, 4: 1, 5: 2, 6: 3, 7: 4, 8: 5,
+		9: 6, 10: 7, 12: 8, 16: 9, 32: 10, 48: 11
+	}
+	var q_idx = denom_to_idx.get(EditorChartState.quantize_denominator, 1)
+	_quantize_option.set_block_signals(true)
+	_quantize_option.select(q_idx)
+	_quantize_option.set_block_signals(false)
+
+	_snap_toggle.set_block_signals(true)
+	_snap_toggle.button_pressed = EditorChartState.snap_enabled
+	_snap_toggle.set_block_signals(false)
+
+func _block_meta_edit_signals(block: bool) -> void:
+	_title_edit.set_block_signals(block)
+	_producer_edit.set_block_signals(block)
+	_vocalist_edit.set_block_signals(block)
+	_creator_edit.set_block_signals(block)
+	_jacket_path_edit.set_block_signals(block)
+	_audio_path_edit.set_block_signals(block)
+
 func _refresh_note_fields() -> void:
 	if selected_note.is_empty():
 		return
-	
-	# 音符类型（阻塞信号，防止 select() 触发 item_selected 导致递归）
+
 	var ntype = selected_note.get("type", "tap")
 	var type_idx: int
 	match ntype:
@@ -307,29 +338,24 @@ func _refresh_note_fields() -> void:
 	_note_type_option.set_block_signals(true)
 	_note_type_option.select(type_idx)
 	_note_type_option.set_block_signals(false)
-	
-	# 时间
+
 	_note_time_spin.set_value_no_signal(selected_note.get("time", 0) as float)
-	
-	# 轨道
 	_note_column_spin.set_value_no_signal(selected_note.get("column", 1) as float)
-	
-	# hold duration
+
 	var is_hold = ntype == "hold"
 	_hold_duration_container.visible = is_hold
 	if is_hold:
 		_hold_duration_spin.set_value_no_signal(selected_note.get("duration", 0) as float)
-	
-	# heart map
+
 	var is_heart = ntype == "heart"
 	_heart_map_container.visible = is_heart
 	if is_heart:
 		var arr: Array = selected_note.get("map", [])
+		_heart_map_edit.set_block_signals(true)
 		_heart_map_edit.text = ",".join(arr)
+		_heart_map_edit.set_block_signals(false)
 
-# ============================================================
-# 折叠/展开
-# ============================================================
+# --- 折叠/展开 ---
 
 func _on_toggle_pressed() -> void:
 	_is_expanded = not _is_expanded
@@ -343,38 +369,36 @@ func _on_toggle_pressed() -> void:
 		_content_container.visible = false
 	emit_signal("panel_toggled", _is_expanded)
 
-# ============================================================
-# 外部调用接口
-# ============================================================
-
 signal panel_toggled(expanded: bool)
 signal meta_changed()
 signal note_changed(index: int)
 signal jacket_browse_requested()
 signal audio_browse_requested()
 
-## 设置为元信息模式
 func set_meta_mode() -> void:
-	selected_note = {}  # 新建空字典，不清除数组引用
+	selected_note = {}
 	selected_note_index = -1
 	_switch_to_meta_mode()
 
-## 设置为音符编辑模式
 func set_note(note: Dictionary, index: int) -> void:
-	selected_note = note.duplicate(true)  # 防御性复制，避免直接引用数组元素
+	selected_note = note.duplicate(true)
 	selected_note_index = index
 	_switch_to_note_mode()
 
-## 刷新当前模式
+func update_selected_note(note: Dictionary, index: int) -> void:
+	if selected_note_index != index or _mode != 1:
+		return
+	selected_note = note.duplicate(true)
+	_refresh_note_fields()
+
 func refresh() -> void:
 	if _mode == 0:
 		_refresh_meta_fields()
 	else:
 		_refresh_note_fields()
+	_refresh_settings_fields()
 
-# ============================================================
-# 元信息字段变更回调
-# ============================================================
+# --- 元数据编辑回调 ---
 
 func _on_title_changed(new_text: String) -> void:
 	EditorChartState.title = new_text
@@ -416,17 +440,22 @@ func _on_creator_changed(new_text: String) -> void:
 
 func _on_difficulty_changed(index: int) -> void:
 	match index:
-		0:
-			EditorChartState.difficulty = "EZ"
-		1:
-			EditorChartState.difficulty = "NM"
-		2:
-			EditorChartState.difficulty = "HD"
+		0: EditorChartState.difficulty = "EZ"
+		1: EditorChartState.difficulty = "NM"
+		2: EditorChartState.difficulty = "HD"
 	emit_signal("meta_changed")
 
-# ============================================================
-# 音符属性变更回调
-# ============================================================
+func _on_quantize_changed(index: int) -> void:
+	var idx_to_denom: Array[int] = [2, 4, 5, 6, 7, 8, 9, 10, 12, 16, 32, 48]
+	if index >= 0 and index < idx_to_denom.size():
+		EditorChartState.quantize_denominator = idx_to_denom[index]
+	emit_signal("meta_changed")
+
+func _on_snap_toggled(button_pressed: bool) -> void:
+	EditorChartState.snap_enabled = button_pressed
+	emit_signal("meta_changed")
+
+# --- 音符属性编辑回调 ---
 
 func _on_note_type_changed(index: int) -> void:
 	if selected_note.is_empty():
@@ -439,27 +468,22 @@ func _on_note_type_changed(index: int) -> void:
 		3: type_str = "hold"
 		4: type_str = "heart"
 		_: type_str = "tap"
-	
+
 	var old_type = selected_note.get("type", "")
 	selected_note["type"] = type_str
-	
-	# 新类型为 hold 时确保有 duration
+
 	if type_str == "hold" and not selected_note.has("duration"):
 		selected_note["duration"] = 500
-	# 新类型为 heart 时确保有 map
 	if type_str == "heart" and not selected_note.has("map"):
 		selected_note["map"] = [1, 2, 3, 4]
-	# 非 hold 时移除 duration
 	if type_str != "hold" and selected_note.has("duration"):
 		selected_note.erase("duration")
-	# 非 heart 时移除 map
 	if type_str != "heart" and selected_note.has("map"):
 		selected_note.erase("map")
-	
-	# 同步到 EditorChartState
+
 	if selected_note_index >= 0 and selected_note_index < EditorChartState.notes.size():
 		EditorChartState.notes[selected_note_index] = selected_note
-	
+
 	_refresh_note_fields()
 	emit_signal("note_changed", selected_note_index)
 

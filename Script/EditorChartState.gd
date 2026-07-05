@@ -1,51 +1,35 @@
 extends Node
 
-# ============================================================
-# 谱面元信息 (General)
-# ============================================================
+# --- 谱面元数据 ---
 var title: String = "Untitled"
 var producer: String = ""
 var vocalist: String = ""
 var creator: String = ""
-var difficulty: String = "EZ"  # EZ, NM, HD
+var difficulty: String = "EZ"
 var version: String = "1.0"
 var bpm: float = 80.0
 var jacket_path: String = ""
 var audio_path: String = ""
 
-# ============================================================
-# 存档态（直接对应 RGCBeatmap）
-# ============================================================
-var timing_points: Array[Dictionary] = []
-var notes: Array[Dictionary] = []          # 平铺所有音符，不按轨道分组
+# --- 谱面数据 ---
+var timing_points: Array[Dictionary] = []	# 变速点
+var notes: Array[Dictionary] = []			# 音符列表
 
-# ============================================================
-# 编辑态（不存盘）
-# ============================================================
+# --- 编辑器状态 ---
 var selected_notes: Array[Dictionary] = []
 var clipboard: Array[Dictionary] = []
-## 时间轴起始时间(ms)，向右递增
-var scroll_time: int = 0
-## 缩放：每毫秒占多少像素
-var px_per_ms: float = 0.3
+var scroll_time: int = 0			# 当前滚动时间 (ms)，决定视口起点
+var px_per_ms: float = 0.3			# 像素/毫秒，控制缩放
+var quantize_denominator: int = 4		# 量化分母 (4=1/4拍, 默认)
+var snap_enabled: bool = true			# 编辑时音符吸附开关
 
-## 音频时长(ms)，0 表示无边界
+# --- 音频数据 ---
 var audio_duration_ms: int = 0
-
-## 波形振幅数据（归一化 0.0-1.0），采样率 1000Hz（索引即毫秒）
-var waveform_samples: PackedFloat32Array = []
-
-# ============================================================
-# 文件路径
-# ============================================================
+var waveform_samples: PackedFloat32Array = []	# 降采样后的波形数据，每元素为该毫秒的峰值 [0,1]
 
 var current_file_path: String = ""
 
-# ============================================================
-# 滚动边界
-# ============================================================
-
-## 计算最大可滚动时间
+# 计算最大可滚动时间：有音频时取音频时长+3s，否则取最晚音符+3s
 func get_max_scroll_time() -> int:
 	if audio_duration_ms <= 0:
 		if notes.is_empty():
@@ -62,16 +46,11 @@ func get_max_scroll_time() -> int:
 		return maxi(max_note_time + 3000, 1000)
 	return audio_duration_ms + 3000
 
-## 限制 scroll_time 到合理范围（判定线时间不得小于 0）
+# 将 scroll_time 限制在合法范围内
 func clamp_scroll() -> void:
-	var max_time := get_max_scroll_time()
-	scroll_time = clampi(scroll_time, 0, max_time)
+	scroll_time = clampi(scroll_time, 0, get_max_scroll_time())
 
-# ============================================================
-# JSON 序列化 / 反序列化
-# ============================================================
-
-## 从 JSON 字典加载谱面数据
+# 从 JSON dict 加载谱面
 func load_from_dict(data: Dictionary) -> void:
 	var general: Dictionary = data.get("General", {})
 	title = general.get("Title", "Untitled")
@@ -81,16 +60,18 @@ func load_from_dict(data: Dictionary) -> void:
 	difficulty = general.get("Difficulty", "EZ")
 	version = general.get("Version", "1.0")
 	bpm = general.get("BPM", 80.0)
-	
+	jacket_path = general.get("JacketPath", "")
+	audio_path = general.get("AudioPath", "")
+
 	var hit_objects: Array = data.get("HitObjects", [])
 	notes.clear()
 	for obj in hit_objects:
 		notes.append(obj.duplicate(true))
-	
+
 	selected_notes.clear()
 	timing_points.clear()
 
-## 导出为 JSON 字典
+# 将当前谱面序列化为 JSON dict
 func to_dict() -> Dictionary:
 	var general := {
 		"Title": title,
@@ -99,19 +80,21 @@ func to_dict() -> Dictionary:
 		"Creator": creator,
 		"Difficulty": difficulty,
 		"Version": version,
-		"BPM": bpm
+		"BPM": bpm,
+		"JacketPath": jacket_path,
+		"AudioPath": audio_path
 	}
-	
+
 	var hit_objects: Array[Dictionary] = []
 	for note in notes:
 		hit_objects.append(note.duplicate(true))
-	
+
 	return {
 		"General": general,
 		"HitObjects": hit_objects
 	}
 
-## 新建谱面（重置所有数据）
+# 重置为新谱面
 func new_chart() -> void:
 	title = "Untitled"
 	producer = ""
@@ -128,6 +111,8 @@ func new_chart() -> void:
 	clipboard.clear()
 	scroll_time = 0
 	px_per_ms = 0.3
+	quantize_denominator = 4
+	snap_enabled = true
 	audio_duration_ms = 0
 	waveform_samples.clear()
 	current_file_path = ""
