@@ -41,7 +41,7 @@ flat = true
 
 [node name="File" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=663633255]
 title = "文件"
-item_count = 5
+item_count = 7
 item_0/text = "新建"
 item_0/id = 0
 item_1/text = "打开"
@@ -52,6 +52,10 @@ item_3/text = "保存"
 item_3/id = 2
 item_4/text = "另存为"
 item_4/id = 3
+item_5/id = 5
+item_5/separator = true
+item_6/text = "导出"
+item_6/id = 6
 
 [node name="Edit" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=1239854490]
 title = "编辑"

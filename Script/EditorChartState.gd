@@ -29,6 +29,83 @@ var waveform_samples: PackedFloat32Array = []	# 降采样后的波形数据，�
 
 var current_file_path: String = ""
 
+# --- 撤销/重做 ---
+const MAX_HISTORY: int = 100
+var _undo_stack: Array[Dictionary] = []
+var _redo_stack: Array[Dictionary] = []
+var _is_undoing: bool = false
+
+func push_undo_state() -> void:
+	if _is_undoing:
+		return
+	var state := _capture_state()
+	_undo_stack.append(state)
+	_redo_stack.clear()
+	if _undo_stack.size() > MAX_HISTORY:
+		_undo_stack.pop_front()
+
+func undo() -> bool:
+	if _undo_stack.is_empty():
+		return false
+	_is_undoing = true
+	var current := _capture_state()
+	_redo_stack.append(current)
+	var prev = _undo_stack.pop_back()
+	_restore_state(prev)
+	_is_undoing = false
+	return true
+
+func redo() -> bool:
+	if _redo_stack.is_empty():
+		return false
+	_is_undoing = true
+	var current := _capture_state()
+	_undo_stack.append(current)
+	var next = _redo_stack.pop_back()
+	_restore_state(next)
+	_is_undoing = false
+	return true
+
+func clear_undo_history() -> void:
+	_undo_stack.clear()
+	_redo_stack.clear()
+
+func _capture_state() -> Dictionary:
+	var notes_copy: Array[Dictionary] = []
+	for note in notes:
+		notes_copy.append(note.duplicate(true))
+	return {
+		"notes": notes_copy,
+		"title": title,
+		"producer": producer,
+		"vocalist": vocalist,
+		"creator": creator,
+		"difficulty": difficulty,
+		"version": version,
+		"bpm": bpm,
+		"jacket_path": jacket_path,
+		"audio_path": audio_path,
+		"quantize_denominator": quantize_denominator,
+		"snap_enabled": snap_enabled,
+	}
+
+func _restore_state(state: Dictionary) -> void:
+	title = state["title"]
+	producer = state["producer"]
+	vocalist = state["vocalist"]
+	creator = state["creator"]
+	difficulty = state["difficulty"]
+	version = state["version"]
+	bpm = state["bpm"]
+	jacket_path = state["jacket_path"]
+	audio_path = state["audio_path"]
+	quantize_denominator = state["quantize_denominator"]
+	snap_enabled = state["snap_enabled"]
+	notes.clear()
+	for note_dict in state["notes"]:
+		notes.append(note_dict)
+	selected_notes.clear()
+
 # 计算最大可滚动时间：有音频时取音频时长+3s，否则取最晚音符+3s
 func get_max_scroll_time() -> int:
 	if audio_duration_ms <= 0:

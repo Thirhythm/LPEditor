@@ -26,6 +26,8 @@ var _prev_scroll_time: int = 0
 var _drag_note_index: int = -1
 var _drag_original_time: int = 0
 var _drag_original_column: int = 0
+var _drag_original_duration: int = 0
+var _drag_mode: int = 0
 
 func _ready() -> void:
 	_set_child_mouse_filter(MOUSE_FILTER_IGNORE)
@@ -288,6 +290,11 @@ func _draw_hold_note(note: Dictionary, y: float, mid_x: float, track_w: float, c
 		var head_size: float = maxf(bar_w * 1.2, 10.0)
 		draw_rect(Rect2(mid_x - head_size / 2.0, y - 3, head_size, 6), Color.WHITE, true)
 
+	var h := size.y
+	if end_y >= 0 and end_y <= h:
+		var tail_size: float = maxf(bar_w * 0.8, 8.0)
+		draw_rect(Rect2(mid_x - tail_size / 2.0, end_y - 3, tail_size, 6), Color(1, 1, 1, 0.6), true)
+
 	if selected:
 		draw_rect(Rect2(x0 - 1, bar_top - 4, bar_w + 2, bar_h + 8),
 			Color(1, 1, 1, 0.8), false, 1.5)
@@ -326,6 +333,8 @@ func _gui_input(event: InputEvent) -> void:
 		if _drag_note_index >= 0 and (event.button_mask & MOUSE_BUTTON_MASK_LEFT):
 			_drag_update(event.position)
 			get_viewport().set_input_as_handled()
+		else:
+			_update_cursor(event.position)
 		return
 
 	if event is InputEventMouseButton and event.pressed:
@@ -335,25 +344,48 @@ func _gui_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_RIGHT:
 				_on_right_click(event.position)
 
+func _update_cursor(pos: Vector2) -> void:
+	if not placement_type.is_empty():
+		mouse_default_cursor_shape = CURSOR_ARROW
+		return
+	var track := x_to_track(pos.x)
+	var tail_idx := _hit_test_hold_tail(pos, track)
+	if tail_idx >= 0:
+		mouse_default_cursor_shape = CURSOR_VSIZE
+	else:
+		mouse_default_cursor_shape = CURSOR_ARROW
+
 # 左键点击：检测命中音符、放置新音符或取消选择
 func _on_left_click(pos: Vector2, force_place: bool) -> void:
 	var track := x_to_track(pos.x)
 	var time_ms := y_to_time(pos.y)
 
-	var hit_idx := _hit_test_note(pos, track)
-	if hit_idx >= 0:
-		select_note(hit_idx)
-		_drag_note_index = hit_idx
-		_drag_original_time = EditorChartState.notes[hit_idx].get("time", 0) as int
-		_drag_original_column = EditorChartState.notes[hit_idx].get("column", 1) as int
-		return
+	if placement_type.is_empty() and not force_place:
+		var tail_idx := _hit_test_hold_tail(pos, track)
+		if tail_idx >= 0:
+			EditorChartState.push_undo_state()
+			select_note(tail_idx)
+			_drag_note_index = tail_idx
+			_drag_mode = 2
+			_drag_original_duration = EditorChartState.notes[tail_idx].get("duration", 0) as int
+			return
 
-	if not placement_type.is_empty() or force_place:
-		_place_note(track, time_ms)
-	else:
+		var hit_idx := _hit_test_note(pos, track)
+		if hit_idx >= 0:
+			EditorChartState.push_undo_state()
+			select_note(hit_idx)
+			_drag_note_index = hit_idx
+			_drag_mode = 1
+			_drag_original_time = EditorChartState.notes[hit_idx].get("time", 0) as int
+			_drag_original_column = EditorChartState.notes[hit_idx].get("column", 1) as int
+			return
+
 		selected_index = -1
 		emit_signal("note_deselected")
 		queue_redraw()
+		return
+
+	_place_note(track, time_ms)
 
 func _snap_time(time_ms: int) -> int:
 	if not EditorChartState.snap_enabled:
@@ -375,6 +407,10 @@ func _place_note(track: int, time_ms: int) -> void:
 
 	time_ms = _snap_time(time_ms)
 
+	for note in EditorChartState.notes:
+		if int(note.get("time", 0)) == time_ms and int(note.get("column", 1)) == track:
+			return
+
 	var note: Dictionary = {
 		"type": ntype,
 		"time": time_ms,
@@ -386,6 +422,7 @@ func _place_note(track: int, time_ms: int) -> void:
 	elif ntype == "heart":
 		note["map"] = [1, 2, 3, 4]
 
+	EditorChartState.push_undo_state()
 	var idx := add_note(note)
 	select_note(idx)
 	emit_signal("note_placed", idx)
@@ -422,6 +459,24 @@ func _hit_test_note(pos: Vector2, track: int) -> int:
 				return ni
 	return -1
 
+func _hit_test_hold_tail(pos: Vector2, track: int) -> int:
+	var track_w: float = size.x / float(NUM_TRACKS)
+	var mid_x: float = (track - 1) * track_w + track_w / 2.0
+	if absf(pos.x - mid_x) > track_w * 0.5:
+		return -1
+	for ni in range(EditorChartState.notes.size() - 1, -1, -1):
+		var note: Dictionary = EditorChartState.notes[ni]
+		if note.get("column", 1) as int != track:
+			continue
+		if note.get("type", "") != "hold" or not note.has("duration"):
+			continue
+		var nt := note.get("time", 0) as int
+		var dur := note.get("duration", 0) as int
+		var end_y := time_to_y(float(nt + dur))
+		if absf(pos.y - end_y) < 8.0:
+			return ni
+	return -1
+
 # Delete 键删除选中音符
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
@@ -434,37 +489,54 @@ func _unhandled_input(event: InputEvent) -> void:
 func _delete_note(index: int) -> void:
 	if index < 0 or index >= EditorChartState.notes.size():
 		return
+	EditorChartState.push_undo_state()
 	EditorChartState.notes.remove_at(index)
 	if selected_index == index:
 		selected_index = -1
 	if _drag_note_index == index:
 		_drag_note_index = -1
+		_drag_mode = 0
 	emit_signal("note_deleted", index)
 	queue_redraw()
 
 func _drag_update(pos: Vector2) -> void:
-	var new_time := y_to_time(pos.y)
-	new_time = _snap_time(new_time)
-	new_time = maxi(new_time, 0)
-	var new_column := x_to_track(pos.x)
-	new_column = clampi(new_column, 1, NUM_TRACKS)
-
 	var note: Dictionary = EditorChartState.notes[_drag_note_index]
-	if note["time"] != new_time or note["column"] != new_column:
-		note["time"] = new_time
-		note["column"] = new_column
-		queue_redraw()
+
+	if _drag_mode == 1:
+		var new_time := y_to_time(pos.y)
+		new_time = _snap_time(new_time)
+		new_time = maxi(new_time, 0)
+		var new_column := x_to_track(pos.x)
+		new_column = clampi(new_column, 1, NUM_TRACKS)
+		if note["time"] != new_time or note["column"] != new_column:
+			note["time"] = new_time
+			note["column"] = new_column
+			queue_redraw()
+	elif _drag_mode == 2:
+		var note_time := note.get("time", 0) as int
+		var tail_time := y_to_time(pos.y)
+		tail_time = _snap_time(tail_time)
+		var new_duration := maxi(tail_time - note_time, 1)
+		if note.get("duration", 0) != new_duration:
+			note["duration"] = new_duration
+			queue_redraw()
 
 func _end_drag() -> void:
 	if _drag_note_index < 0 or _drag_note_index >= EditorChartState.notes.size():
 		_drag_note_index = -1
+		_drag_mode = 0
 		return
 	var note: Dictionary = EditorChartState.notes[_drag_note_index]
-	var new_time := note.get("time", 0) as int
-	var new_column := note.get("column", 1) as int
-	if new_time != _drag_original_time or new_column != _drag_original_column:
-		emit_signal("note_moved", _drag_note_index)
+	if _drag_mode == 1:
+		var new_time := note.get("time", 0) as int
+		var new_column := note.get("column", 1) as int
+		if new_time != _drag_original_time or new_column != _drag_original_column:
+			emit_signal("note_moved", _drag_note_index)
+	elif _drag_mode == 2:
+		if note.get("duration", 0) != _drag_original_duration:
+			emit_signal("note_resized", _drag_note_index)
 	_drag_note_index = -1
+	_drag_mode = 0
 
 signal note_selected(index: int, note: Dictionary)
 signal note_deselected()
@@ -472,6 +544,7 @@ signal note_deleted(index: int)
 signal note_placed(index: int)
 signal scroll_changed()
 signal note_moved(index: int)
+signal note_resized(index: int)
 
 func select_note(index: int) -> void:
 	selected_index = index
@@ -481,6 +554,8 @@ func select_note(index: int) -> void:
 
 func deselect() -> void:
 	selected_index = -1
+	_drag_note_index = -1
+	_drag_mode = 0
 	emit_signal("note_deselected")
 	queue_redraw()
 

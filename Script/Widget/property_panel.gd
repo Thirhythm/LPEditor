@@ -44,6 +44,16 @@ var _settings_container: VBoxContainer
 
 var _is_expanded: bool = true
 var _mode: int = 0	# 0: meta, 1: note
+var _text_undo_pushed: bool = false
+
+func _push_text_undo() -> void:
+	if _text_undo_pushed:
+		return
+	EditorChartState.push_undo_state()
+	_text_undo_pushed = true
+
+func _reset_text_undo() -> void:
+	_text_undo_pushed = false
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(EXPANDED_WIDTH, 0)
@@ -76,6 +86,7 @@ func _build_ui() -> void:
 	_add_section_label(_meta_container, "谱面名称")
 	_title_edit = _add_line_edit(_meta_container, "Title")
 	_title_edit.text_changed.connect(_on_title_changed)
+	_title_edit.focus_entered.connect(_reset_text_undo)
 
 	_add_section_label(_meta_container, "曲绘")
 	_jacket_display = TextureRect.new()
@@ -90,6 +101,7 @@ func _build_ui() -> void:
 	_jacket_path_edit = _add_line_edit(jacket_path_hbox, "曲绘路径...")
 	_jacket_path_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_jacket_path_edit.text_changed.connect(_on_jacket_path_changed)
+	_jacket_path_edit.focus_entered.connect(_reset_text_undo)
 	_jacket_browse = Button.new()
 	_jacket_browse.text = "..."
 	_jacket_browse.custom_minimum_size = Vector2(32, 0)
@@ -102,6 +114,7 @@ func _build_ui() -> void:
 	_audio_path_edit = _add_line_edit(audio_path_hbox, "音频路径...")
 	_audio_path_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_audio_path_edit.text_changed.connect(_on_audio_path_changed)
+	_audio_path_edit.focus_entered.connect(_reset_text_undo)
 	_audio_browse = Button.new()
 	_audio_browse.text = "..."
 	_audio_browse.custom_minimum_size = Vector2(32, 0)
@@ -120,14 +133,17 @@ func _build_ui() -> void:
 	_add_section_label(_meta_container, "制作人 (Producer)")
 	_producer_edit = _add_line_edit(_meta_container, "Producer")
 	_producer_edit.text_changed.connect(_on_producer_changed)
+	_producer_edit.focus_entered.connect(_reset_text_undo)
 
 	_add_section_label(_meta_container, "歌手 (Vocalist)")
 	_vocalist_edit = _add_line_edit(_meta_container, "Vocalist")
 	_vocalist_edit.text_changed.connect(_on_vocalist_changed)
+	_vocalist_edit.focus_entered.connect(_reset_text_undo)
 
 	_add_section_label(_meta_container, "谱面作者 (Creator)")
 	_creator_edit = _add_line_edit(_meta_container, "Creator")
 	_creator_edit.text_changed.connect(_on_creator_changed)
+	_creator_edit.focus_entered.connect(_reset_text_undo)
 
 	_add_section_label(_meta_container, "难度")
 	_difficulty_option = OptionButton.new()
@@ -197,6 +213,7 @@ func _build_ui() -> void:
 	_heart_map_edit = LineEdit.new()
 	_heart_map_edit.placeholder_text = "e.g. 4,2,3,1"
 	_heart_map_edit.text_changed.connect(_on_heart_map_changed)
+	_heart_map_edit.focus_entered.connect(_reset_text_undo)
 	map_vbox.add_child(_heart_map_edit)
 
 	# --- 编辑器设置（常驻） ---
@@ -401,10 +418,12 @@ func refresh() -> void:
 # --- 元数据编辑回调 ---
 
 func _on_title_changed(new_text: String) -> void:
+	_push_text_undo()
 	EditorChartState.title = new_text
 	emit_signal("meta_changed")
 
 func _on_jacket_path_changed(new_text: String) -> void:
+	_push_text_undo()
 	EditorChartState.jacket_path = new_text
 	if ResourceLoader.exists(new_text):
 		var tex := load(new_text)
@@ -416,6 +435,7 @@ func _on_jacket_browse_pressed() -> void:
 	emit_signal("jacket_browse_requested")
 
 func _on_audio_path_changed(new_text: String) -> void:
+	_push_text_undo()
 	EditorChartState.audio_path = new_text
 	emit_signal("meta_changed")
 
@@ -423,22 +443,27 @@ func _on_audio_browse_pressed() -> void:
 	emit_signal("audio_browse_requested")
 
 func _on_bpm_changed(value: float) -> void:
+	EditorChartState.push_undo_state()
 	EditorChartState.bpm = value
 	emit_signal("meta_changed")
 
 func _on_producer_changed(new_text: String) -> void:
+	_push_text_undo()
 	EditorChartState.producer = new_text
 	emit_signal("meta_changed")
 
 func _on_vocalist_changed(new_text: String) -> void:
+	_push_text_undo()
 	EditorChartState.vocalist = new_text
 	emit_signal("meta_changed")
 
 func _on_creator_changed(new_text: String) -> void:
+	_push_text_undo()
 	EditorChartState.creator = new_text
 	emit_signal("meta_changed")
 
 func _on_difficulty_changed(index: int) -> void:
+	EditorChartState.push_undo_state()
 	match index:
 		0: EditorChartState.difficulty = "EZ"
 		1: EditorChartState.difficulty = "NM"
@@ -446,12 +471,14 @@ func _on_difficulty_changed(index: int) -> void:
 	emit_signal("meta_changed")
 
 func _on_quantize_changed(index: int) -> void:
+	EditorChartState.push_undo_state()
 	var idx_to_denom: Array[int] = [2, 4, 5, 6, 7, 8, 9, 10, 12, 16, 32, 48]
 	if index >= 0 and index < idx_to_denom.size():
 		EditorChartState.quantize_denominator = idx_to_denom[index]
 	emit_signal("meta_changed")
 
 func _on_snap_toggled(button_pressed: bool) -> void:
+	EditorChartState.push_undo_state()
 	EditorChartState.snap_enabled = button_pressed
 	emit_signal("meta_changed")
 
@@ -460,6 +487,7 @@ func _on_snap_toggled(button_pressed: bool) -> void:
 func _on_note_type_changed(index: int) -> void:
 	if selected_note.is_empty():
 		return
+	EditorChartState.push_undo_state()
 	var type_str: String
 	match index:
 		0: type_str = "tap"
@@ -490,6 +518,7 @@ func _on_note_type_changed(index: int) -> void:
 func _on_note_time_changed(value: float) -> void:
 	if selected_note.is_empty():
 		return
+	EditorChartState.push_undo_state()
 	selected_note["time"] = int(value)
 	if selected_note_index >= 0 and selected_note_index < EditorChartState.notes.size():
 		EditorChartState.notes[selected_note_index] = selected_note
@@ -498,6 +527,7 @@ func _on_note_time_changed(value: float) -> void:
 func _on_note_column_changed(value: float) -> void:
 	if selected_note.is_empty():
 		return
+	EditorChartState.push_undo_state()
 	selected_note["column"] = int(value)
 	if selected_note_index >= 0 and selected_note_index < EditorChartState.notes.size():
 		EditorChartState.notes[selected_note_index] = selected_note
@@ -506,6 +536,7 @@ func _on_note_column_changed(value: float) -> void:
 func _on_hold_duration_changed(value: float) -> void:
 	if selected_note.is_empty():
 		return
+	EditorChartState.push_undo_state()
 	selected_note["duration"] = int(value)
 	if selected_note_index >= 0 and selected_note_index < EditorChartState.notes.size():
 		EditorChartState.notes[selected_note_index] = selected_note
@@ -514,6 +545,7 @@ func _on_hold_duration_changed(value: float) -> void:
 func _on_heart_map_changed(new_text: String) -> void:
 	if selected_note.is_empty():
 		return
+	_push_text_undo()
 	var parts := new_text.split(",", false)
 	var arr: Array[int] = []
 	for p in parts:
