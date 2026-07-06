@@ -146,6 +146,7 @@ func _on_visual_note_resized(index: int) -> void:
 	_update_status("长键时长已修改 #%d [%dms]" % [index, note.get("duration", 0)])
 
 func _on_visual_scroll_changed() -> void:
+	ruler.playhead_time = EditorChartState.scroll_time
 	ruler.queue_redraw()
 
 # --- Property 信号 ---
