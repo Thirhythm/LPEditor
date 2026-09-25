@@ -11,18 +11,22 @@ config_version=5
 [application]
 
 config/name="LPEditor"
-run/main_scene="uid://duwn1b63ojpal"
+run/main_scene="res://ui/main_editor/main_editor.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 boot_splash/show_image=false
 config/icon="res://icon.svg"
 
 [autoload]
 
-EditorChartState="*uid://cyolgp36ulckr"
+_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]
 
 window/size/mode=2
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
 
 [physics]
 

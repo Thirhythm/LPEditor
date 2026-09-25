@@ -1,0 +1,350 @@
+[gd_scene format=3 uid="uid://bx8x40do7fsr4"]
+
+[ext_resource type="Script" uid="uid://cv0o83ugbak7r" path="res://ui/property_panel/property_panel.gd" id="1_ofp4i"]
+
+[node name="PropertyPanel" type="Control" unique_id=1486967502]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_ofp4i")
+
+[node name="HBox" type="HBoxContainer" parent="." unique_id=785145867]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ToggleButton" type="Button" parent="HBox" unique_id=1452087580]
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+size_flags_vertical = 3
+text = "<"
+
+[node name="Content" type="VBoxContainer" parent="HBox" unique_id=1068806518]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MetaContainer" type="VBoxContainer" parent="HBox/Content" unique_id=823888474]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GapTitle" type="Control" parent="HBox/Content/MetaContainer" unique_id=1354109963]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="HBox/Content/MetaContainer" unique_id=1169317035]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "谱面名称"
+
+[node name="TitleEdit" type="LineEdit" parent="HBox/Content/MetaContainer" unique_id=1080047985]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Title"
+
+[node name="GapJacket" type="Control" parent="HBox/Content/MetaContainer" unique_id=705021883]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="JacketLabel" type="Label" parent="HBox/Content/MetaContainer" unique_id=867720504]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "曲绘"
+
+[node name="JacketDisplay" type="TextureRect" parent="HBox/Content/MetaContainer" unique_id=2119020857]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+expand_mode = 3
+stretch_mode = 5
+
+[node name="JacketPathHBox" type="HBoxContainer" parent="HBox/Content/MetaContainer" unique_id=1710695125]
+layout_mode = 2
+
+[node name="JacketPathEdit" type="LineEdit" parent="HBox/Content/MetaContainer/JacketPathHBox" unique_id=521187352]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "曲绘路径..."
+
+[node name="JacketBrowse" type="Button" parent="HBox/Content/MetaContainer/JacketPathHBox" unique_id=1008786489]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+text = "..."
+
+[node name="GapAudio" type="Control" parent="HBox/Content/MetaContainer" unique_id=57517087]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="AudioLabel" type="Label" parent="HBox/Content/MetaContainer" unique_id=908002474]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "音频文件"
+
+[node name="AudioPathHBox" type="HBoxContainer" parent="HBox/Content/MetaContainer" unique_id=1055388936]
+layout_mode = 2
+
+[node name="AudioPathEdit" type="LineEdit" parent="HBox/Content/MetaContainer/AudioPathHBox" unique_id=1392652805]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "音频路径..."
+
+[node name="AudioBrowse" type="Button" parent="HBox/Content/MetaContainer/AudioPathHBox" unique_id=30997325]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+text = "..."
+
+[node name="GapBpm" type="Control" parent="HBox/Content/MetaContainer" unique_id=1857757200]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="BpmLabel" type="Label" parent="HBox/Content/MetaContainer" unique_id=134726102]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "BPM"
+
+[node name="BpmSpin" type="SpinBox" parent="HBox/Content/MetaContainer" unique_id=109134120]
+layout_mode = 2
+min_value = 1.0
+max_value = 999.0
+value = 80.0
+
+[node name="GapProducer" type="Control" parent="HBox/Content/MetaContainer" unique_id=1560831855]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="ProducerLabel" type="Label" parent="HBox/Content/MetaContainer" unique_id=1900847192]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "制作人 (Producer)"
+
+[node name="ProducerEdit" type="LineEdit" parent="HBox/Content/MetaContainer" unique_id=257369632]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Producer"
+
+[node name="GapVocalist" type="Control" parent="HBox/Content/MetaContainer" unique_id=836387271]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="VocalistLabel" type="Label" parent="HBox/Content/MetaContainer" unique_id=218228460]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "歌手 (Vocalist)"
+
+[node name="VocalistEdit" type="LineEdit" parent="HBox/Content/MetaContainer" unique_id=1618589270]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Vocalist"
+
+[node name="GapCreator" type="Control" parent="HBox/Content/MetaContainer" unique_id=395437047]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="CreatorLabel" type="Label" parent="HBox/Content/MetaContainer" unique_id=1520315568]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "谱面作者 (Creator)"
+
+[node name="CreatorEdit" type="LineEdit" parent="HBox/Content/MetaContainer" unique_id=1878859880]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Creator"
+
+[node name="GapDifficulty" type="Control" parent="HBox/Content/MetaContainer" unique_id=1381075315]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="DifficultyLabel" type="Label" parent="HBox/Content/MetaContainer" unique_id=1111303286]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "难度"
+
+[node name="DifficultyOption" type="OptionButton" parent="HBox/Content/MetaContainer" unique_id=914769834]
+layout_mode = 2
+item_count = 3
+popup/item_0/text = "EZ (简单)"
+popup/item_0/id = 0
+popup/item_1/text = "NM (普通)"
+popup/item_1/id = 1
+popup/item_2/text = "HD (困难)"
+popup/item_2/id = 2
+
+[node name="NoteContainer" type="VBoxContainer" parent="HBox/Content" unique_id=578846319]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GapNoteType" type="Control" parent="HBox/Content/NoteContainer" unique_id=1093864796]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="NoteTypeLabel" type="Label" parent="HBox/Content/NoteContainer" unique_id=1262409341]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "音符类型"
+
+[node name="NoteTypeOption" type="OptionButton" parent="HBox/Content/NoteContainer" unique_id=1203780357]
+layout_mode = 2
+item_count = 5
+popup/item_0/text = "tap (蓝键)"
+popup/item_0/id = 0
+popup/item_1/text = "drag (黄键)"
+popup/item_1/id = 1
+popup/item_2/text = "release (红键)"
+popup/item_2/id = 2
+popup/item_3/text = "hold (长键)"
+popup/item_3/id = 3
+popup/item_4/text = "heart (心键)"
+popup/item_4/id = 4
+
+[node name="GapNoteTime" type="Control" parent="HBox/Content/NoteContainer" unique_id=1645910910]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="NoteTimeLabel" type="Label" parent="HBox/Content/NoteContainer" unique_id=1197260262]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "判定时间 (ms)"
+
+[node name="NoteTimeSpin" type="SpinBox" parent="HBox/Content/NoteContainer" unique_id=1668087466]
+layout_mode = 2
+max_value = 99999999.0
+
+[node name="GapNoteColumn" type="Control" parent="HBox/Content/NoteContainer" unique_id=685054579]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="NoteColumnLabel" type="Label" parent="HBox/Content/NoteContainer" unique_id=1906275511]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "轨道"
+
+[node name="NoteColumnSpin" type="SpinBox" parent="HBox/Content/NoteContainer" unique_id=1158301116]
+layout_mode = 2
+min_value = 1.0
+max_value = 4.0
+value = 1.0
+
+[node name="HoldDurationContainer" type="Control" parent="HBox/Content/NoteContainer" unique_id=1376098240]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HoldVBox" type="VBoxContainer" parent="HBox/Content/NoteContainer/HoldDurationContainer" unique_id=1561782173]
+layout_mode = 0
+size_flags_horizontal = 3
+
+[node name="GapHoldDuration" type="Control" parent="HBox/Content/NoteContainer/HoldDurationContainer/HoldVBox" unique_id=1629236960]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="HoldDurationLabel" type="Label" parent="HBox/Content/NoteContainer/HoldDurationContainer/HoldVBox" unique_id=1892367467]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "持续时间 (ms)"
+
+[node name="HoldDurationSpin" type="SpinBox" parent="HBox/Content/NoteContainer/HoldDurationContainer/HoldVBox" unique_id=1740899854]
+layout_mode = 2
+min_value = 1.0
+max_value = 99999999.0
+value = 500.0
+
+[node name="HeartMapContainer" type="Control" parent="HBox/Content/NoteContainer" unique_id=2039269878]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MapVBox" type="VBoxContainer" parent="HBox/Content/NoteContainer/HeartMapContainer" unique_id=1463430385]
+layout_mode = 0
+size_flags_horizontal = 3
+
+[node name="GapHeartMap" type="Control" parent="HBox/Content/NoteContainer/HeartMapContainer/MapVBox" unique_id=1713891320]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="HeartMapLabel" type="Label" parent="HBox/Content/NoteContainer/HeartMapContainer/MapVBox" unique_id=985320020]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "轨道映射 (map)"
+
+[node name="HeartMapEdit" type="LineEdit" parent="HBox/Content/NoteContainer/HeartMapContainer/MapVBox" unique_id=1158420895]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "e.g. 4,2,3,1"
+
+[node name="SettingsContainer" type="VBoxContainer" parent="HBox/Content" unique_id=1255564850]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Separator" type="HSeparator" parent="HBox/Content/SettingsContainer" unique_id=1031210796]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="GapQuantize" type="Control" parent="HBox/Content/SettingsContainer" unique_id=267566809]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="QuantizeLabel" type="Label" parent="HBox/Content/SettingsContainer" unique_id=700271109]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "量化"
+
+[node name="QuantizeOption" type="OptionButton" parent="HBox/Content/SettingsContainer" unique_id=49281761]
+layout_mode = 2
+item_count = 12
+popup/item_0/text = "1/2"
+popup/item_0/id = 0
+popup/item_1/text = "1/4"
+popup/item_1/id = 1
+popup/item_2/text = "1/5"
+popup/item_2/id = 2
+popup/item_3/text = "1/6"
+popup/item_3/id = 3
+popup/item_4/text = "1/7"
+popup/item_4/id = 4
+popup/item_5/text = "1/8"
+popup/item_5/id = 5
+popup/item_6/text = "1/9"
+popup/item_6/id = 6
+popup/item_7/text = "1/10"
+popup/item_7/id = 7
+popup/item_8/text = "1/12"
+popup/item_8/id = 8
+popup/item_9/text = "1/16"
+popup/item_9/id = 9
+popup/item_10/text = "1/32"
+popup/item_10/id = 10
+popup/item_11/text = "1/48"
+popup/item_11/id = 11
+
+[node name="GapSnap" type="Control" parent="HBox/Content/SettingsContainer" unique_id=859358429]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="SnapLabel" type="Label" parent="HBox/Content/SettingsContainer" unique_id=1334834207]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
+theme_override_font_sizes/font_size = 12
+text = "音符吸附"
+
+[node name="SnapToggle" type="CheckBox" parent="HBox/Content/SettingsContainer" unique_id=930942998]
+layout_mode = 2
+button_pressed = true
+text = "启用"
