@@ -10,6 +10,7 @@ func suite_name() -> String:
 func setup() -> void:
 	ChartData.new_chart()
 	EditorState.clear_undo_history()
+	EditorState.mark_saved()
 	EditorState.scroll_time = 0
 	EditorState.px_per_ms = ChartDefs.DEFAULT_PX_PER_MS
 	EditorState.quantize_denominator = ChartDefs.DEFAULT_QUANTIZE_DENOMINATOR
@@ -109,3 +110,35 @@ func test_clamp_scroll_keeps_time_in_range() -> void:
 	EditorState.scroll_time = -500
 	EditorState.clamp_scroll()
 	assert_eq(EditorState.scroll_time, 0)
+
+
+# --- 未保存更改 ---
+
+func test_is_dirty_tracks_document_changes() -> void:
+	assert_false(EditorState.is_dirty(), "新建/保存后应为已保存状态")
+
+	ChartData.notes.append({"type": "tap", "time": 0, "column": 1})
+	assert_true(EditorState.is_dirty(), "改动音符后应视为有未保存的更改")
+
+	EditorState.mark_saved()
+	assert_false(EditorState.is_dirty(), "保存后应回到已保存状态")
+
+
+func test_metadata_change_marks_dirty() -> void:
+	ChartData.bpm = 180.0
+	assert_true(EditorState.is_dirty(), "元数据改动同样算未保存")
+
+	ChartData.bpm = ChartDefs.DEFAULT_BPM
+	assert_false(EditorState.is_dirty(), "改回原值后不应再算未保存")
+
+
+func test_undo_back_to_saved_state_clears_dirty() -> void:
+	EditorState.push_undo_state()
+	ChartData.title = "Changed"
+	assert_true(EditorState.is_dirty())
+
+	EditorState.undo()
+	assert_false(EditorState.is_dirty(), "撤销回保存点后不应再视为有未保存编辑")
+
+	EditorState.redo()
+	assert_true(EditorState.is_dirty(), "重做离开保存点后应重新视为未保存")

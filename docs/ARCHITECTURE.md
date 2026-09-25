@@ -18,7 +18,7 @@ tests/   针对 core 与可测 UI 逻辑的测试套件
 | 类 | 职责 | 关键成员 |
 | --- | --- | --- |
 | `core/chart_data.gd`（`ChartData`） | 一份谱面文档 | `title` / `bpm` / `notes` / `audio_path` / `jacket_path` / `audio_duration_ms` / `waveform_samples` / `current_file_path`，`to_dict()` / `load_from_dict()` / `get_max_scroll_time()` / `capture_snapshot()` |
-| `core/editor_state.gd`（`EditorState`） | 一次编辑会话 | `scroll_time` / `px_per_ms` / `quantize_denominator` / `snap_enabled` / `selected_notes`，`push_undo_state()` / `undo()` / `redo()` / `clamp_scroll()` / `snap_time()` |
+| `core/editor_state.gd`（`EditorState`） | 一次编辑会话 | `scroll_time` / `px_per_ms` / `quantize_denominator` / `snap_enabled` / `selected_notes`，`push_undo_state()` / `undo()` / `redo()` / `clamp_scroll()` / `snap_time()` / `mark_saved()` / `is_dirty()` |
 
 选择「类静态成员」而不是 autoload 的原因：
 
@@ -49,7 +49,8 @@ MainEditor（ui/main_editor/main_editor.tscn）
 ├─ Panel/…/List, List2    工具列表（ToolList，按钮由场景编排）
 ├─ Panel/…/Ruler          EditorRuler：波形 + 缩略图 + 播放头
 ├─ Panel/…/Property       PropertyPanel：元数据 / 音符 / 设置，折叠展开
-└─ TrackUI/…/Visual       EditorVisual：轨道编辑区
+├─ TrackUI/…/Visual       EditorVisual：轨道编辑区
+└─ ConfirmDialog          未保存更改确认（保存 / 不保存 / 取消）
 ```
 
 - `EditorVisual` 通过 `note_selected` / `note_deselected` / `note_placed` / `note_moved` /
@@ -80,6 +81,24 @@ MainEditor（ui/main_editor/main_editor.tscn）
 它不引用任何节点，因此可脱离界面测试与复用。
 
 导出包结构：`chart.lp`（去掉 `AudioPath` / `JacketPath` 的 JSON）+ `audio.<ext>` + `cover.<ext>`。
+
+### 未保存更改
+
+`EditorState.document_signature()`（`ChartData.to_dict()` 的 JSON 指纹）与上次保存时记下的
+`_saved_signature` 比较得出 `is_dirty()`：用整份文档比较，因此撤销回保存点也会变回「已保存」。
+`mark_saved()` 在新建、打开、保存成功后调用。
+
+关闭窗口时 `MainEditor` 接管 `NOTIFICATION_WM_CLOSE_REQUEST`（`_ready()` 里把
+`get_tree().auto_accept_quit` 置 false），有未保存更改才弹出 `ConfirmDialog`：
+
+| 按钮 | 结果 |
+| --- | --- |
+| 保存（确定） | 保存成功后继续退出；无路径时先弹另存为，选完文件再退出 |
+| 不保存（custom_action `discard`） | 放弃改动直接退出 |
+| 取消（取消 / ESC） | 中止退出 |
+
+「保存后继续」通过 `_pending_action` 实现：待续操作在弹窗时挂起，`_do_save()` 成功、
+另存为对话框完成时才执行；保存失败或另存为被取消则作废。
 
 ## 7. 目录迁移对照（本次重构）
 

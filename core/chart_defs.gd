@@ -141,7 +141,7 @@ static func missing_export_fields(chart: Dictionary) -> Array[String]:
 	if title.is_empty() or title == DEFAULT_TITLE:
 		missing.append("标题")
 	if (chart.get("audio_path", "") as String).is_empty():
-		missing.append("音频文件")
+		missing.append("音频")
 	if (chart.get("jacket_path", "") as String).is_empty():
 		missing.append("曲绘")
 	return missing

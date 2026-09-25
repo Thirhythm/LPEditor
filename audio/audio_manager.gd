@@ -12,6 +12,7 @@ class_name AudioManager
 @onready var player: AudioStreamPlayer = $Player
 
 var playing: bool = false
+var finished: bool = false			# 上次播放是否播到音频末尾自然结束（暂停/停止/定位都会清除）
 var _start_time_ms: int = 0		# 本次播放开始时的系统时间 (Time.get_ticks_msec())
 var _start_offset_ms: int = 0		# 本次播放从音频的哪个位置开始 (ms)
 
@@ -33,17 +34,33 @@ func start_playback(from_ms: int) -> bool:
 	_start_time_ms = Time.get_ticks_msec()
 	_start_offset_ms = from_ms
 	playing = true
+	finished = false
 	return true
 
 
 func pause_playback() -> void:
 	player.stop()
 	playing = false
+	finished = false
 
 
 func stop_playback() -> void:
 	player.stop()
 	playing = false
+	finished = false
+
+
+## 播放自然结束（播到音频末尾）：结束播放状态并记录 finished，
+## 供调用方在下次按下播放键时决定是否回到开头
+func mark_finished() -> void:
+	player.stop()
+	playing = false
+	finished = true
+
+
+## 清除"自然结束"标记（用户重新定位播放头/换歌后，播放应以其当前位置为准）
+func clear_finished() -> void:
+	finished = false
 
 
 ## 播放中跳转到指定位置
@@ -51,6 +68,7 @@ func seek(from_ms: int) -> void:
 	player.play(float(from_ms) / 1000.0)
 	_start_time_ms = Time.get_ticks_msec()
 	_start_offset_ms = from_ms
+	finished = false
 
 
 ## 加载当前音频：优先直接解析 WAV（绕过 .import），失败时回退到 Godot 标准导入流。

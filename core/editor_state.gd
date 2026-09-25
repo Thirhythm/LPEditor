@@ -3,7 +3,8 @@ class_name EditorState
 extends RefCounted
 
 ## 编辑器会话状态：视口滚动/缩放、量化与吸附设置、当前选区，
-## 以及基于快照的撤销/重做（快照同时覆盖 ChartData 的文档字段）。
+## 基于快照的撤销/重做（快照同时覆盖 ChartData 的文档字段），
+## 以及「相对上次保存是否有改动」的判定。
 ##
 ## 与 `ChartData` 一样全部使用静态成员，不依赖 autoload 注册与场景树，
 ## 因此可以在编辑器内直接解析、也便于单元测试。
@@ -22,6 +23,9 @@ static var clipboard: Array[Dictionary] = []
 
 static var _history := UndoHistory.new()
 static var _is_undoing: bool = false
+
+# 「已保存」基准：最后一次打开/保存时文档的内容指纹
+static var _saved_signature: String = ""
 
 
 # --- 视口与缩放 ---
@@ -83,6 +87,27 @@ static func redo() -> bool:
 
 static func clear_undo_history() -> void:
 	_history.clear()
+
+
+# --- 未保存更改 ---
+
+## 把当前文档记为「已保存」基准（新建 / 打开 / 保存成功后调用）
+static func mark_saved() -> void:
+	_saved_signature = document_signature()
+
+
+## 当前文档相对上次保存是否有改动。
+## 用整份文档的指纹比较，因此撤销回保存点之后同样会变回「已保存」。
+static func is_dirty() -> bool:
+	if _saved_signature.is_empty():
+		_saved_signature = document_signature()	# 首次查询：把当前文档当作基准
+		return false
+	return document_signature() != _saved_signature
+
+
+## 文档内容指纹（只包含会写进 .lp 的字段）
+static func document_signature() -> String:
+	return JSON.stringify(ChartData.to_dict())
 
 
 ## 快照 = 文档字段（ChartData 提供）+ 会话设置

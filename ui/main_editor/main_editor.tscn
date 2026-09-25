@@ -315,3 +315,10 @@ use_native_dialog = true
 [node name="WarningDialog" type="AcceptDialog" parent="." unique_id=1853697896]
 title = "提示"
 ok_button_text = "确定"
+
+[node name="ConfirmDialog" type="ConfirmationDialog" parent="." unique_id=902098767]
+title = "未保存的更改"
+unresizable = true
+ok_button_text = "保存"
+dialog_autowrap = true
+cancel_button_text = "取消"
