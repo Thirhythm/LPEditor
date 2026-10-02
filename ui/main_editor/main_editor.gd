@@ -5,17 +5,35 @@ extends Control
 
 # 工具栏条目按钮全部由 MainEditor.tscn 节点编排：
 #   List  = 音符 / 行为 分类按钮（索引 0 = 音符，1 = 行为）
-#   List2 = NoteItems（音符子类型按钮，索引 0..5）与 ActionItems（行为按钮，索引 6）
+#   List2 = NoteItems（音符子类型按钮，索引 0..5）与 ActionItems（行为按钮，索引 6..7）
 #           两组按当前分类切换可见性
+const ACTION_INDEX_SPEED: int = 6
+const ACTION_INDEX_ADD_EFFECT: int = 7
+
+## 轨道编辑区的最大宽度 = 窗口总宽度 × 该比例；中间区域比它宽时，
+## 多出来的部分左右平分留白，轨道区居中。轨道是编辑工作面而不是越宽越好，
+## 超宽屏上放任铺满会让音符被拉得过大，所以留一个上限。
+const TRACK_AREA_MAX_WIDTH_RATIO: float = 0.3
+## 轨道编辑区的最大高度 = 窗口总高度 × 该比例，超出部分上下平分留白。
+const TRACK_AREA_MAX_HEIGHT_RATIO: float = 0.85
+
 @onready var list: ToolList = $"Panel/VBoxContainer/ParkPanel/HBoxContainer/List"
 @onready var list2: ToolList = $"Panel/VBoxContainer/ParkPanel/HBoxContainer/List2"
 @onready var note_items: VBoxContainer = $"Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/NoteItems"
 @onready var action_items: VBoxContainer = $"Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/ActionItems"
+# ToolList 用「禁用 = 当前工具」表示选中态，而「添加特效」是一次性动作不是常驻工具：
+# 点击后立即恢复可用，否则第一次之后就再也点不动，无法连续添加
+@onready var _effect_button: Button = $"Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/ActionItems/EffectButton"
 @onready var ruler: EditorRuler = $"Panel/VBoxContainer/Ruler"
 @onready var property_panel: PropertyPanel = $"Panel/VBoxContainer/ParkPanel/Property"
-@onready var visual: EditorVisual = $"TrackUI/CenterContainer/Visual"
+@onready var visual: EditorVisual = $"TrackUI/TrackArea/Visual"
 @onready var status_label: Label = $"Panel/HBoxContainer/Label"
 @onready var audio: AudioManager = $AudioManager
+# 轨道编辑区浮在 Panel 之上，靠 offsets 避开四周的固定控件
+@onready var track_ui: Control = $TrackUI
+@onready var _status_bar: Control = $"Panel/HBoxContainer"
+# 菜单栏 / 标尺 / 工具栏与属性面板所在的列，底边要让开状态栏
+@onready var _main_column: VBoxContainer = $"Panel/VBoxContainer"
 
 var _current_note_type: String = ""
 var _current_category: int = 0
@@ -37,8 +55,10 @@ func _ready() -> void:
 
 	property_panel.meta_changed.connect(_on_meta_changed)
 	property_panel.note_changed.connect(_on_note_changed)
+	property_panel.effect_changed.connect(_on_effect_changed)
 	property_panel.jacket_browse_requested.connect(_on_jacket_browse)
 	property_panel.audio_browse_requested.connect(_on_audio_browse)
+	property_panel.preview_capture_requested.connect(_on_preview_capture_requested)
 
 	visual.note_selected.connect(_on_visual_note_selected)
 	visual.note_deselected.connect(_on_visual_note_deselected)
@@ -47,6 +67,12 @@ func _ready() -> void:
 	visual.scroll_changed.connect(_on_visual_scroll_changed)
 	visual.note_moved.connect(_on_visual_note_moved)
 	visual.note_resized.connect(_on_visual_note_resized)
+	visual.effect_selected.connect(_on_visual_effect_selected)
+	visual.effect_deselected.connect(_on_visual_effect_deselected)
+	visual.effect_start_set.connect(_on_visual_effect_start_set)
+	visual.effect_end_set.connect(_on_visual_effect_end_set)
+	visual.effect_adjusted.connect(_on_visual_effect_adjusted)
+	visual.effect_deleted.connect(_on_visual_effect_deleted)
 
 	ruler.playhead_moved.connect(_on_playhead_moved)
 	
@@ -58,6 +84,11 @@ func _ready() -> void:
 	get_tree().auto_accept_quit = false
 	ruler.set_notes(ChartData.notes)
 	_update_status("左键放置音符，右键删除音符，按下 Enter 可以播放/暂停")
+
+	# 轨道区跟着窗口和属性面板折叠实时重排
+	property_panel.panel_toggled.connect(_on_panel_toggled)
+	resized.connect(_schedule_layout_update)
+	_schedule_layout_update()
 
 # 播放时：根据 audio 计时驱动 scroll，使播放头固定于 ruler 锚点处
 func _process(_delta: float) -> void:
@@ -76,11 +107,60 @@ func _process(_delta: float) -> void:
 	EditorState.clamp_scroll()
 	ruler.queue_redraw()
 
-# 空格键切换播放/暂停，Ctrl+Z 撤销，Ctrl+Y 重做
+# --- 整体布局 ---
+
+## 重算两处会随窗口变化的几何：主内容列的底边，以及轨道编辑区的矩形。
+##
+## 主内容列（菜单栏 / 标尺 / 工具栏与属性面板）停在状态栏上方 —— ParkPanel 会随窗口
+## 伸展，不停住的话会一直铺到窗口底、被状态栏压住。
+##
+## 轨道编辑区浮在 Panel 之上，靠 offsets 让开四周的固定控件：上让标尺、左让工具栏、
+## 右让属性面板（宽度随折叠变化）、下让状态栏，中间剩下的区域留给轨道。
+## 这些基准控件的位置不随窗口缩放，但会随折叠 / 主题字体变化，所以每次窗口尺寸变化时
+## 重新量一遍，而不是把像素写死在场景里。
+## 中间区域超过 TRACK_AREA_MAX_WIDTH_RATIO / TRACK_AREA_MAX_HEIGHT_RATIO 时，
+## 把多出来的部分平分到两侧，形成居中留白。
+func _update_layout() -> void:
+	var viewport_size := get_viewport_rect().size
+	var left := list2.get_global_rect().end.x
+	var right := property_panel.get_global_rect().position.x
+	var top := ruler.get_global_rect().end.y
+	var bottom := _status_bar.get_global_rect().position.y
+
+	_main_column.offset_bottom = bottom - viewport_size.y
+
+	# 轨道自身有最小宽度：把上限压到比它还窄只会把轨道切掉，所以上限有个不低于它的下限
+	var cap_width := maxf(viewport_size.x * TRACK_AREA_MAX_WIDTH_RATIO,
+		visual.get_combined_minimum_size().x)
+	var target_width := minf(right - left, cap_width)
+
+	var inset_x := maxf((right - left - target_width) * 0.5, 0.0)
+	var inset_y := maxf((bottom - top - viewport_size.y * TRACK_AREA_MAX_HEIGHT_RATIO) * 0.5, 0.0)
+
+	track_ui.offset_left = left + inset_x
+	track_ui.offset_right = right - inset_x - viewport_size.x
+	track_ui.offset_top = top + inset_y
+	track_ui.offset_bottom = bottom - inset_y - viewport_size.y
+
+## 延后一帧再量：容器的尺寸要等本帧的布局计算跑完才是最新的
+func _schedule_layout_update() -> void:
+	_update_layout.call_deferred()
+
+func _on_panel_toggled(_expanded: bool) -> void:
+	_schedule_layout_update()
+
+# 空格键切换播放/暂停，Ctrl+S 保存，Ctrl+Z 撤销，Ctrl+Y 重做
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_SPACE:
 			_toggle_playback()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_S and event.ctrl_pressed:
+			# Ctrl+Shift+S 另存为；Ctrl+S 有路径就直接覆盖，没路径才弹另存为
+			if event.shift_pressed:
+				_file_dialog_save.popup_centered()
+			else:
+				_save_chart()
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_Z and event.ctrl_pressed:
 			_undo()
@@ -103,19 +183,36 @@ func _on_list_item_pressed(index: int) -> void:
 	list2.reset_selection()
 	_current_note_type = ""
 	visual.placement_type = ""
+	visual.cancel_effect_placement()
 
 func _on_list2_item_pressed(index: int) -> void:
-	if _current_category == 0:
-		_current_note_type = ChartDefs.tool_note_type(index)
-		visual.placement_type = _current_note_type
-	else:
+	# 换用任何工具都先退出特效放置（已创建的特效保留，可撤销）
+	visual.cancel_effect_placement()
+
+	if _current_category != 0:
 		_current_note_type = ""
 		visual.placement_type = ""
+		if index == ACTION_INDEX_ADD_EFFECT:
+			_begin_add_effect()
+			_effect_button.disabled = false
+		return
+
+	_current_note_type = ChartDefs.tool_note_type(index)
+	visual.placement_type = _current_note_type
 
 	if _current_note_type.is_empty():
 		_update_status("选择模式")
 	else:
 		_update_status("放置: %s" % _current_note_type)
+
+## 「添加特效」：先建一个默认特效，再由轨道区的两次点击确定开始 / 结束位置
+func _begin_add_effect() -> void:
+	var start := EditorState.snap_time(maxi(ruler.playhead_time, 0))
+	EditorState.push_undo_state()
+	var index := visual.add_effect(ChartDefs.make_effect(ChartDefs.EFFECT_TYPES[0], start))
+	visual.begin_effect_placement(index)
+	property_panel.set_effect(ChartData.effects[index], index)
+	_update_status("点击轨道区设置特效开始位置，再次点击设置结束位置")
 
 # --- Visual 信号 ---
 
@@ -165,6 +262,57 @@ func _on_meta_changed() -> void:
 func _on_note_changed(index: int) -> void:
 	ruler.set_notes(ChartData.notes)
 	_update_status("音符已更新 #%d" % index)
+
+func _on_effect_changed(index: int) -> void:
+	visual.queue_redraw()
+	_update_status("特效已更新 #%d" % index)
+
+# --- Effect 信号 ---
+
+func _on_visual_effect_selected(index: int, effect: Dictionary) -> void:
+	property_panel.set_effect(effect, index)
+	_update_status("选中特效 #%d [%s] %dms" % [index, effect.get("type", "?"), effect.get("time", 0)])
+
+func _on_visual_effect_deselected() -> void:
+	property_panel.set_meta_mode()
+	_update_status("")
+
+# 放置过程中用 set_effect（而不是只刷新）把面板拉回特效模式：
+# 中途点 ruler 移动播放头等操作会把面板切回元数据模式，此时仍应继续显示正在放置的特效
+func _on_visual_effect_start_set(index: int) -> void:
+	if index < 0 or index >= ChartData.effects.size():
+		return
+	property_panel.set_effect(ChartData.effects[index], index)
+	_update_status("特效开始位置 %dms，再次点击设置结束位置" % ChartData.effects[index].get("time", 0))
+
+func _on_visual_effect_end_set(index: int) -> void:
+	if index < 0 or index >= ChartData.effects.size():
+		return
+	property_panel.set_effect(ChartData.effects[index], index)
+	_update_status("特效区间已设定 #%d [%d → %dms]" % [
+		index,
+		ChartData.effects[index].get("time", 0),
+		ChartDefs.effect_end_time(ChartData.effects[index]),
+	])
+
+## 拖动色带（拖边界改大小 / 拖本体平移）结束后同步面板与状态栏
+func _on_visual_effect_adjusted(index: int) -> void:
+	if index < 0 or index >= ChartData.effects.size():
+		return
+	var effect: Dictionary = ChartData.effects[index]
+	property_panel.set_effect(effect, index)
+	_update_status("特效区间已调整 #%d [%d → %dms]" % [
+		index, effect.get("time", 0), ChartDefs.effect_end_time(effect),
+	])
+
+func _on_visual_effect_deleted(index: int) -> void:
+	# 删除后下标整体前移，面板必须按画布当前的下标重新绑定，否则会写回不存在的下标
+	var pending := visual.selected_effect_index
+	if visual.effect_placement and pending >= 0 and pending < ChartData.effects.size():
+		property_panel.set_effect(ChartData.effects[pending], pending)
+	else:
+		property_panel.set_meta_mode()
+	_update_status("已删除特效 #%d" % index)
 
 # --- Ruler 信号 ---
 
@@ -237,6 +385,7 @@ func _redo() -> void:
 
 func _after_state_restore() -> void:
 	property_panel.set_meta_mode()
+	visual.cancel_effect_placement()
 	visual.deselect()
 	visual.queue_redraw()
 	ruler.set_notes(ChartData.notes)
@@ -261,6 +410,7 @@ func _new_chart() -> void:
 	ChartData.new_chart()
 	EditorState.mark_saved()
 	property_panel.set_meta_mode()
+	visual.cancel_effect_placement()
 	visual.deselect()
 	ruler.set_notes(ChartData.notes)
 	_update_status("新建谱面")
@@ -286,6 +436,7 @@ func _after_chart_loaded(path: String) -> void:
 	ruler.playhead_time = clampi(ruler.playhead_time, 0, max_time)
 	ruler.update_playhead(ruler.playhead_time)
 	property_panel.set_meta_mode()
+	visual.cancel_effect_placement()
 	visual.deselect()
 	ruler.set_notes(ChartData.notes)
 	_update_status("")
@@ -334,6 +485,17 @@ func _on_audio_file_selected(path: String) -> void:
 	EditorState.scroll_time = clampi(EditorState.scroll_time, 0, max_time)
 	ruler.update_playhead(ruler.playhead_time)
 	property_panel.refresh()
+
+## 「取播放头」：把播放头当前位置回填成预览开始 / 结束时间
+func _on_preview_capture_requested(is_end: bool) -> void:
+	var time_ms := maxi(ruler.playhead_time, 0)
+	EditorState.push_undo_state()
+	if is_end:
+		ChartData.preview_end_ms = time_ms
+	else:
+		ChartData.preview_ms = time_ms
+	property_panel.refresh()
+	_update_status("预览%s时间已设为 %dms" % ["结束" if is_end else "开始", time_ms])
 
 # --- 导出 ---
 

@@ -12,15 +12,20 @@ const MIN_NOTE_WIDTH: float = 8.0
 const BACKGROUND_COLOR := Color(0.08, 0.08, 0.10)
 const PLAYHEAD_COLOR := Color(0.3, 0.7, 1.0, 0.85)
 const SELECTION_COLOR := Color(1, 1, 1, 0.8)
+## 特效区间的填充 / 边框透明度（颜色取自 ChartDefs.EFFECT_COLOR）
+const EFFECT_FILL_ALPHA: float = 0.16
+const EFFECT_BORDER_ALPHA: float = 0.9
 
 
-## 画整块轨道区；selected_index 为当前选中音符（-1 表示无选中）
-static func draw_all(ci: Control, geom: VisualGeometry, selected_index: int) -> void:
+## 画整块轨道区；selected_index / selected_effect_index 为当前选中项（-1 表示无选中）
+static func draw_all(ci: Control, geom: VisualGeometry, selected_index: int,
+		selected_effect_index: int = -1) -> void:
 	var w: float = ci.size.x
 	var h: float = ci.size.y
 
 	ci.draw_rect(Rect2(0, 0, w, h), BACKGROUND_COLOR, true)
 	_draw_track_columns(ci, w, h)
+	_draw_effects(ci, geom, w, h, selected_effect_index)
 	_draw_grid_lines(ci, geom, w, h)
 	_draw_notes(ci, geom, w, h, selected_index)
 	_draw_playhead(ci, geom, w, h)
@@ -70,6 +75,43 @@ static func _draw_grid_lines(ci: Control, geom: VisualGeometry, w: float, h: flo
 			ci.draw_line(Vector2(0, y), Vector2(w, y), Color(0.45, 0.5, 0.65, 0.7), 1.0)
 
 
+# --- 特效 ---
+
+## 特效区间：横跨全部轨道的时间色带，画在网格线之下作为背景层
+static func _draw_effects(ci: Control, geom: VisualGeometry, w: float, h: float,
+		selected_effect_index: int) -> void:
+	var color := ChartDefs.EFFECT_COLOR
+	var fill := Color(color.r, color.g, color.b, EFFECT_FILL_ALPHA)
+	var border := Color(color.r, color.g, color.b, EFFECT_BORDER_ALPHA)
+
+	for index in range(ChartData.effects.size()):
+		var effect: Dictionary = ChartData.effects[index]
+		var y_start := geom.time_to_y(float(effect.get("time", 0)))
+		var y_end := geom.time_to_y(float(ChartDefs.effect_end_time(effect)))
+
+		if y_start < 0.0 and y_end < 0.0:
+			continue
+		if y_start > h and y_end > h:
+			continue
+
+		# 区间跨界时截断到视口：y_end 是较早的时间（更靠上），y_start 是较晚的时间
+		var top := maxf(y_end, 0.0)
+		var bottom := minf(y_start, h)
+		if bottom <= top:
+			continue
+
+		ci.draw_rect(Rect2(0, top, w, bottom - top), fill, true)
+
+		# 开始 / 结束边界线（滚出视口的一侧不画）
+		if y_start >= 0.0 and y_start <= h:
+			ci.draw_line(Vector2(0, y_start), Vector2(w, y_start), border, 2.0)
+		if y_end >= 0.0 and y_end <= h:
+			ci.draw_line(Vector2(0, y_end), Vector2(w, y_end), border, 2.0)
+
+		if index == selected_effect_index:
+			ci.draw_rect(Rect2(0, top, w, bottom - top), SELECTION_COLOR, false, 2.0)
+
+
 # --- 音符 ---
 
 ## 绘制所有可见音符
@@ -109,13 +151,11 @@ static func _draw_notes(ci: Control, geom: VisualGeometry, w: float, h: float,
 		var color := ChartDefs.note_color(note_type)
 		var selected := index == selected_index
 
-		match note_type:
-			ChartDefs.NOTE_TYPE_HOLD:
-				_draw_hold_note(ci, geom, note, y, mid_x, track_w, color, selected)
-			ChartDefs.NOTE_TYPE_HEART:
-				_draw_heart_note(ci, mid_x, y, track_w, color, selected)
-			_:
-				_draw_single_note(ci, mid_x, y, track_w, color, selected)
+		# 除长键外都是同一种矩形（heart 与 tap 同形状，只有配色不同）
+		if note_type == ChartDefs.NOTE_TYPE_HOLD:
+			_draw_hold_note(ci, geom, note, y, mid_x, track_w, color, selected)
+		else:
+			_draw_single_note(ci, mid_x, y, track_w, color, selected)
 
 
 static func _draw_single_note(ci: Control, mid_x: float, y: float, track_w: float,
@@ -153,24 +193,6 @@ static func _draw_hold_note(ci: Control, geom: VisualGeometry, note: Dictionary,
 	if selected:
 		ci.draw_rect(Rect2(x0 - 1, bar_top - 4, bar_w + 2, bar_h + 8),
 			SELECTION_COLOR, false, 1.5)
-
-
-static func _draw_heart_note(ci: Control, mid_x: float, y: float, track_w: float,
-		color: Color, selected: bool) -> void:
-	var heart_size: float = maxf(track_w * 0.35, 8.0)
-
-	ci.draw_circle(Vector2(mid_x + heart_size * 0.25, y - heart_size * 0.1),
-		heart_size * 0.25, color)
-	ci.draw_circle(Vector2(mid_x - heart_size * 0.25, y - heart_size * 0.1),
-		heart_size * 0.25, color)
-	ci.draw_colored_polygon(PackedVector2Array([
-		Vector2(mid_x - heart_size * 0.5, y - heart_size * 0.1),
-		Vector2(mid_x + heart_size * 0.5, y - heart_size * 0.1),
-		Vector2(mid_x, y + heart_size * 0.3),
-	]), color)
-
-	if selected:
-		ci.draw_circle(Vector2(mid_x, y), heart_size * 0.6, Color(1, 1, 1, 0.5), false, 1.5)
 
 
 # --- 判定线 ---

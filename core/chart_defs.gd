@@ -25,12 +25,31 @@ const HOLD_DEFAULT_DURATION_MS: int = 500
 ## heart 音符默认目标轨（谱面格式要求 1..NUM_TRACKS）
 const HEART_DEFAULT_MAP: Array[int] = [1, 2, 3, 4]
 
+# --- 特效 ---
+## 可用的特效种类；新增种类时同步添加对应的标签与默认值
+const EFFECT_TYPES: Array[String] = ["change"]
+const EFFECT_TYPE_CHANGE: String = "change"
+## change 特效的 changed 列表长度固定为轨道数，每项是 1..NUM_TRACKS 的目标轨
+const EFFECT_CHANGED_SIZE: int = NUM_TRACKS
+const EFFECT_DEFAULT_CHANGED: Array[int] = [1, 2, 3, 4]
+const EFFECT_DEFAULT_DURATION_MS: int = 1000
+const EFFECT_MIN_DURATION_MS: int = 1
+## 轨道区标记特效区间的颜色
+const EFFECT_COLOR: Color = Color(0.62, 0.40, 0.95)
+
 # --- 谱面元数据 ---
 const DEFAULT_TITLE: String = "Untitled"
 const DIFFICULTIES: Array[String] = ["EZ", "NM", "HD"]
 const DEFAULT_DIFFICULTY: String = "EZ"
 const DEFAULT_VERSION: String = "1.0"
 const DEFAULT_BPM: float = 80.0
+const DEFAULT_CHAPTER: int = 1
+## 元数据里几个整数字段的取值范围：属性面板与载入收敛共用同一组，
+## 免得出现「文档里是 -3、面板显示 1」这种对不上的情况
+const MAX_PREVIEW_MS: int = 99999999
+const MAX_CRYSTAL: int = 999999
+const MIN_CHAPTER: int = 1
+const MAX_CHAPTER: int = 9999
 
 # --- 量化 ---
 ## OptionButton 的索引顺序，同时也是面板显示顺序
@@ -52,6 +71,15 @@ static func sanitize_bpm(value: float) -> float:
 
 static func sanitize_denominator(value: int) -> int:
 	return value if value > 0 else DEFAULT_QUANTIZE_DENOMINATOR
+
+
+## 把从 JSON 读来的值收敛成合法整数：null / 非数字回退到 fallback，浮点先钳制到
+## [minimum, maximum] 再截断。不能直接 int()：int(null) 会抛错中断整个载入，
+## 而超范围的浮点转 int 会溢出成一个巨大的乱值。
+static func sanitize_int(value: Variant, fallback: int, minimum: int, maximum: int) -> int:
+	if not (value is int or value is float):
+		return fallback
+	return clampi(int(clampf(float(value), float(minimum), float(maximum))), minimum, maximum)
 
 
 ## 一拍（四分音符）时长，单位 ms
@@ -108,7 +136,7 @@ static func note_color(type: String) -> Color:
 		"drag":    return Color(1.0, 0.85, 0.2)
 		"release": return Color(1.0, 0.3, 0.3)
 		"hold":    return Color(0.3, 1.0, 0.5)
-		"heart":   return Color(1.0, 0.3, 1.0)
+		"heart":   return Color8(0x70, 0x0F, 0x0F)	# #700f0f
 		_:         return Color(0.7, 0.7, 0.7)
 
 
@@ -132,6 +160,46 @@ static func make_note(type: String, time_ms: int, column: int) -> Dictionary:
 	elif note["type"] == NOTE_TYPE_HEART:
 		note["map"] = HEART_DEFAULT_MAP.duplicate()
 	return note
+
+
+# --- 特效 ---
+
+## 特效区间的结束时间（特效的 time 是开始，duration 是持续时间）
+static func effect_end_time(effect: Dictionary) -> int:
+	return (effect.get("time", 0) as int) + (effect.get("duration", 0) as int)
+
+
+static func effect_type_index(type: String) -> int:
+	var idx := EFFECT_TYPES.find(type)
+	return idx if idx >= 0 else 0
+
+
+static func effect_type_at(index: int) -> String:
+	if index < 0 or index >= EFFECT_TYPES.size():
+		return EFFECT_TYPES[0]
+	return EFFECT_TYPES[index]
+
+
+## 把任意长度 / 越界的轨道变换列表整理成恰好 EFFECT_CHANGED_SIZE 项、取值 1..NUM_TRACKS
+static func normalize_changed(values: Array) -> Array[int]:
+	var result: Array[int] = []
+	for i in range(EFFECT_CHANGED_SIZE):
+		if i < values.size():
+			result.append(clampi(int(values[i]), 1, NUM_TRACKS))
+		else:
+			result.append(EFFECT_DEFAULT_CHANGED[i])
+	return result
+
+
+## 新建一个特效字典，字段顺序与导出格式一致
+static func make_effect(type: String, time_ms: int,
+		duration_ms: int = EFFECT_DEFAULT_DURATION_MS) -> Dictionary:
+	return {
+		"type": type if not type.is_empty() else EFFECT_TYPES[0],
+		"time": time_ms,
+		"changed": EFFECT_DEFAULT_CHANGED.duplicate(),
+		"duration": maxi(duration_ms, EFFECT_MIN_DURATION_MS),
+	}
 
 
 ## 校验谱面是否可以导出，返回缺失项的中文说明列表（空表示通过）

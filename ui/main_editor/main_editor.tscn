@@ -45,6 +45,7 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_bottom = -39.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -107,6 +108,7 @@ script = ExtResource("3_k3cff")
 [node name="ParkPanel" type="Control" parent="Panel/VBoxContainer" unique_id=2114008496]
 custom_minimum_size = Vector2(0, 470)
 layout_mode = 2
+size_flags_vertical = 3
 
 [node name="HBoxContainer" type="HBoxContainer" parent="Panel/VBoxContainer/ParkPanel" unique_id=1746567729]
 layout_mode = 0
@@ -175,6 +177,10 @@ disabled = true
 text = "变速"
 icon = ExtResource("8_xl04w")
 
+[node name="EffectButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/ActionItems" unique_id=2147000020]
+layout_mode = 2
+text = "添加特效"
+
 [node name="Property" parent="Panel/VBoxContainer/ParkPanel" unique_id=1486967502 instance=ExtResource("9_06sh7")]
 layout_mode = 1
 anchors_preset = 11
@@ -205,77 +211,81 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 400.0
-offset_top = 100.0
-offset_right = -400.0
+offset_left = 220.0
+offset_top = 130.0
+offset_right = -280.0
+offset_bottom = -39.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="CenterContainer" type="CenterContainer" parent="TrackUI" unique_id=487706512]
+[node name="TrackArea" type="Control" parent="TrackUI" unique_id=487706512]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -176.0
-offset_top = -450.0
-offset_right = 176.0
-offset_bottom = 450.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Generator" type="CenterContainer" parent="TrackUI/CenterContainer" unique_id=443982476]
+[node name="Generator" type="CenterContainer" parent="TrackUI/TrackArea" unique_id=443982476]
+layout_mode = 0
+
+[node name="Tracks" type="HBoxContainer" parent="TrackUI/TrackArea/Generator" unique_id=537005616]
 layout_mode = 2
 
-[node name="Tracks" type="HBoxContainer" parent="TrackUI/CenterContainer/Generator" unique_id=537005616]
-layout_mode = 2
-
-[node name="Track1" type="Control" parent="TrackUI/CenterContainer/Generator/Tracks" unique_id=1454039064]
+[node name="Track1" type="Control" parent="TrackUI/TrackArea/Generator/Tracks" unique_id=1454039064]
 custom_minimum_size = Vector2(85, 900)
 layout_mode = 2
 
-[node name="Track2" type="Control" parent="TrackUI/CenterContainer/Generator/Tracks" unique_id=248776942]
+[node name="Track2" type="Control" parent="TrackUI/TrackArea/Generator/Tracks" unique_id=248776942]
 custom_minimum_size = Vector2(85, 720)
 layout_mode = 2
 
-[node name="Track3" type="Control" parent="TrackUI/CenterContainer/Generator/Tracks" unique_id=1064321993]
+[node name="Track3" type="Control" parent="TrackUI/TrackArea/Generator/Tracks" unique_id=1064321993]
 custom_minimum_size = Vector2(85, 720)
 layout_mode = 2
 
-[node name="Track4" type="Control" parent="TrackUI/CenterContainer/Generator/Tracks" unique_id=2046755772]
+[node name="Track4" type="Control" parent="TrackUI/TrackArea/Generator/Tracks" unique_id=2046755772]
 custom_minimum_size = Vector2(85, 720)
 layout_mode = 2
 
-[node name="Visual" type="VBoxContainer" parent="TrackUI/CenterContainer" unique_id=1035890231]
-layout_mode = 2
+[node name="Visual" type="VBoxContainer" parent="TrackUI/TrackArea" unique_id=1035890231]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("2_81a4y")
 
-[node name="Tracks" type="HBoxContainer" parent="TrackUI/CenterContainer/Visual" unique_id=1400130878]
+[node name="Tracks" type="HBoxContainer" parent="TrackUI/TrackArea/Visual" unique_id=1400130878]
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Track1" type="Panel" parent="TrackUI/CenterContainer/Visual/Tracks" unique_id=1511640771]
-custom_minimum_size = Vector2(85, 900)
+[node name="Track1" type="Panel" parent="TrackUI/TrackArea/Visual/Tracks" unique_id=1511640771]
+custom_minimum_size = Vector2(85, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_yfgv8")
 
-[node name="Track2" type="Panel" parent="TrackUI/CenterContainer/Visual/Tracks" unique_id=1693674281]
-custom_minimum_size = Vector2(85, 550)
+[node name="Track2" type="Panel" parent="TrackUI/TrackArea/Visual/Tracks" unique_id=1693674281]
+custom_minimum_size = Vector2(85, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_drrvr")
 
-[node name="Track3" type="Panel" parent="TrackUI/CenterContainer/Visual/Tracks" unique_id=1483050575]
-custom_minimum_size = Vector2(85, 550)
+[node name="Track3" type="Panel" parent="TrackUI/TrackArea/Visual/Tracks" unique_id=1483050575]
+custom_minimum_size = Vector2(85, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_8rfj7")
 
-[node name="Track4" type="Panel" parent="TrackUI/CenterContainer/Visual/Tracks" unique_id=1452375806]
-custom_minimum_size = Vector2(85, 550)
+[node name="Track4" type="Panel" parent="TrackUI/TrackArea/Visual/Tracks" unique_id=1452375806]
+custom_minimum_size = Vector2(85, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxEmpty_6vu4k")
 

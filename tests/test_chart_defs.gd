@@ -96,6 +96,54 @@ func test_note_color_is_stable_and_distinct() -> void:
 	assert_eq(ChartDefs.note_color("unknown"), Color(0.7, 0.7, 0.7), "未知类型使用中性色")
 
 
+func test_heart_color_is_the_dark_red() -> void:
+	assert_eq(ChartDefs.note_color("heart"), Color8(0x70, 0x0F, 0x0F), "心键配色为 #700f0f")
+	assert_ne(ChartDefs.note_color("heart"), ChartDefs.note_color("tap"), "与蓝键同形状但不同色")
+
+
+# --- 特效 ---
+
+func test_effect_end_time_adds_duration() -> void:
+	assert_eq(ChartDefs.effect_end_time({"type": "change", "time": 5000, "duration": 2000}), 7000)
+	assert_eq(ChartDefs.effect_end_time({"type": "change", "time": 5000}), 5000, "缺少 duration 时等于开始时间")
+
+
+func test_effect_type_lookup_falls_back_to_first() -> void:
+	assert_eq(ChartDefs.effect_type_index("change"), 0)
+	assert_eq(ChartDefs.effect_type_index("bogus"), 0, "未知类型回落到第一个")
+	assert_eq(ChartDefs.effect_type_at(0), "change")
+	assert_eq(ChartDefs.effect_type_at(99), "change", "越界索引回落到第一个")
+
+
+func test_make_effect_matches_export_format() -> void:
+	var effect := ChartDefs.make_effect("change", 5000, 2000)
+	assert_eq(effect["type"], "change")
+	assert_eq(effect["time"], 5000)
+	assert_eq(effect["duration"], 2000)
+	assert_eq(effect["changed"], ChartDefs.EFFECT_DEFAULT_CHANGED)
+	assert_eq((effect["changed"] as Array).size(), ChartDefs.EFFECT_CHANGED_SIZE)
+
+
+func test_make_effect_rejects_invalid_input() -> void:
+	var effect := ChartDefs.make_effect("", 100, 0)
+	assert_eq(effect["type"], ChartDefs.EFFECT_TYPE_CHANGE, "空类型回落到 change")
+	assert_eq(effect["duration"], ChartDefs.EFFECT_MIN_DURATION_MS, "时长不短于下限")
+
+
+func test_normalize_changed_fixes_size_and_range() -> void:
+	var kept := ChartDefs.normalize_changed([2, 3, 4, 1])
+	assert_eq(kept.size(), ChartDefs.EFFECT_CHANGED_SIZE)
+	assert_eq(kept[0], 2)
+	assert_eq(kept[3], 1, "合法列表原样保留")
+
+	var fixed := ChartDefs.normalize_changed([9, 0, 2])
+	assert_eq(fixed.size(), ChartDefs.EFFECT_CHANGED_SIZE, "过短的列表补足到 4 项")
+	assert_eq(fixed[0], 4, "超过上限取上限")
+	assert_eq(fixed[1], 1, "低于下限取下限")
+	assert_eq(fixed[2], 2)
+	assert_eq(fixed[3], 4, "缺失位取默认值")
+
+
 func test_difficulty_index_falls_back_to_first() -> void:
 	assert_eq(ChartDefs.difficulty_index("EZ"), 0)
 	assert_eq(ChartDefs.difficulty_index("HD"), 2)
