@@ -1,0 +1,334 @@
+[gd_scene format=3 uid="uid://duwn1b63ojpal"]
+
+[ext_resource type="Script" uid="uid://8ixca2t5aw1a" path="res://ui/visual/visual.gd" id="2_81a4y"]
+[ext_resource type="Script" uid="uid://dlebwk84r21q8" path="res://ui/main_editor/main_editor.gd" id="2_k3cff"]
+[ext_resource type="Script" uid="uid://hpiyx5i2mto6" path="res://ui/ruler/ruler.gd" id="3_k3cff"]
+[ext_resource type="PackedScene" uid="uid://cwjayqxla1uw6" path="res://ui/tool_list/tool_list.tscn" id="4_sv8ax"]
+[ext_resource type="Texture2D" uid="uid://7gnw7ony2aac" path="res://assets/icons/music-note.svg" id="5_uptup"]
+[ext_resource type="Script" uid="uid://sfdqcrxaybh7" path="res://audio/audio_manager.gd" id="6_audio"]
+[ext_resource type="Texture2D" uid="uid://cupgnefvnrdob" path="res://assets/icons/play-circle-fill.svg" id="6_hvl7u"]
+[ext_resource type="Texture2D" uid="uid://dsc6pg5qghhwh" path="res://assets/icons/speedometer2.svg" id="8_xl04w"]
+[ext_resource type="PackedScene" uid="uid://bx8x40do7fsr4" path="res://ui/property_panel/property_panel.tscn" id="9_06sh7"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yfgv8"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_drrvr"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_8rfj7"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_6vu4k"]
+
+[node name="MainEditor" type="Control" unique_id=143128476]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_k3cff")
+
+[node name="AudioManager" type="Node" parent="." unique_id=1044379755]
+script = ExtResource("6_audio")
+
+[node name="Player" type="AudioStreamPlayer" parent="AudioManager" unique_id=782468219]
+
+[node name="Panel" type="Control" parent="." unique_id=1998989861]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel" unique_id=552556196]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -39.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MenuBar" type="MenuBar" parent="Panel/VBoxContainer" unique_id=2130764045]
+layout_mode = 2
+flat = true
+
+[node name="File" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=663633255]
+title = "文件"
+item_count = 7
+item_0/text = "新建"
+item_0/id = 0
+item_1/text = "打开"
+item_1/id = 1
+item_2/id = 4
+item_2/separator = true
+item_3/text = "保存"
+item_3/id = 2
+item_4/text = "另存为"
+item_4/id = 3
+item_5/id = 5
+item_5/separator = true
+item_6/text = "导出"
+item_6/id = 6
+
+[node name="Edit" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=1239854490]
+title = "编辑"
+item_count = 2
+item_0/text = "撤销"
+item_0/id = 0
+item_1/text = "重做"
+item_1/id = 1
+
+[node name="View" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=619195134]
+title = "视图"
+
+[node name="Play" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=232853092]
+title = "播放"
+item_count = 3
+item_0/text = "播放"
+item_0/id = 0
+item_1/text = "暂停"
+item_1/id = 1
+item_2/text = "停止"
+item_2/id = 2
+
+[node name="Help" type="PopupMenu" parent="Panel/VBoxContainer/MenuBar" unique_id=556132011]
+title = "帮助"
+item_count = 2
+item_0/text = "手册"
+item_0/id = 0
+item_1/text = "访问项目仓库"
+item_1/id = 1
+
+[node name="Ruler" type="Control" parent="Panel/VBoxContainer" unique_id=1379985823]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+script = ExtResource("3_k3cff")
+
+[node name="ParkPanel" type="Control" parent="Panel/VBoxContainer" unique_id=2114008496]
+custom_minimum_size = Vector2(0, 470)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel/VBoxContainer/ParkPanel" unique_id=1746567729]
+layout_mode = 0
+offset_right = 4.0
+
+[node name="List" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer" unique_id=767966043 instance=ExtResource("4_sv8ax")]
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+
+[node name="NoteButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List" unique_id=1597960508]
+layout_mode = 2
+disabled = true
+text = "音符"
+icon = ExtResource("5_uptup")
+icon_alignment = 1
+vertical_icon_alignment = 0
+
+[node name="ActionButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List" unique_id=529892577]
+layout_mode = 2
+text = "行为"
+icon = ExtResource("6_hvl7u")
+icon_alignment = 1
+vertical_icon_alignment = 0
+
+[node name="List2" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer" unique_id=1464244148 instance=ExtResource("4_sv8ax")]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+
+[node name="NoteItems" type="VBoxContainer" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2" unique_id=138813068]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SelectButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/NoteItems" unique_id=1523191808]
+layout_mode = 2
+disabled = true
+text = "选择"
+
+[node name="TapButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/NoteItems" unique_id=900250247]
+layout_mode = 2
+text = "蓝键"
+
+[node name="DragButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/NoteItems" unique_id=1366596189]
+layout_mode = 2
+text = "黄键"
+
+[node name="ReleaseButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/NoteItems" unique_id=2132517427]
+layout_mode = 2
+text = "红键"
+
+[node name="HoldButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/NoteItems" unique_id=762322488]
+layout_mode = 2
+text = "长键"
+
+[node name="HeartButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/NoteItems" unique_id=1877547385]
+layout_mode = 2
+text = "心键"
+
+[node name="ActionItems" type="VBoxContainer" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2" unique_id=72852640]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SpeedButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/ActionItems" unique_id=1537373166]
+layout_mode = 2
+disabled = true
+text = "变速"
+icon = ExtResource("8_xl04w")
+
+[node name="EffectButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/ActionItems" unique_id=2147000020]
+layout_mode = 2
+text = "添加特效"
+
+[node name="Property" parent="Panel/VBoxContainer/ParkPanel" unique_id=1486967502 instance=ExtResource("9_06sh7")]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -280.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel" unique_id=324373183]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -39.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Label" type="Label" parent="Panel/HBoxContainer" unique_id=1086441211]
+layout_mode = 2
+text = "就绪."
+
+[node name="TrackUI" type="Control" parent="." unique_id=1609602266]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 220.0
+offset_top = 130.0
+offset_right = -280.0
+offset_bottom = -39.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TrackArea" type="Control" parent="TrackUI" unique_id=487706512]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Generator" type="CenterContainer" parent="TrackUI/TrackArea" unique_id=443982476]
+layout_mode = 0
+
+[node name="Tracks" type="HBoxContainer" parent="TrackUI/TrackArea/Generator" unique_id=537005616]
+layout_mode = 2
+
+[node name="Track1" type="Control" parent="TrackUI/TrackArea/Generator/Tracks" unique_id=1454039064]
+custom_minimum_size = Vector2(85, 900)
+layout_mode = 2
+
+[node name="Track2" type="Control" parent="TrackUI/TrackArea/Generator/Tracks" unique_id=248776942]
+custom_minimum_size = Vector2(85, 720)
+layout_mode = 2
+
+[node name="Track3" type="Control" parent="TrackUI/TrackArea/Generator/Tracks" unique_id=1064321993]
+custom_minimum_size = Vector2(85, 720)
+layout_mode = 2
+
+[node name="Track4" type="Control" parent="TrackUI/TrackArea/Generator/Tracks" unique_id=2046755772]
+custom_minimum_size = Vector2(85, 720)
+layout_mode = 2
+
+[node name="Visual" type="VBoxContainer" parent="TrackUI/TrackArea" unique_id=1035890231]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_81a4y")
+
+[node name="Tracks" type="HBoxContainer" parent="TrackUI/TrackArea/Visual" unique_id=1400130878]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Track1" type="Panel" parent="TrackUI/TrackArea/Visual/Tracks" unique_id=1511640771]
+custom_minimum_size = Vector2(85, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_yfgv8")
+
+[node name="Track2" type="Panel" parent="TrackUI/TrackArea/Visual/Tracks" unique_id=1693674281]
+custom_minimum_size = Vector2(85, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_drrvr")
+
+[node name="Track3" type="Panel" parent="TrackUI/TrackArea/Visual/Tracks" unique_id=1483050575]
+custom_minimum_size = Vector2(85, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_8rfj7")
+
+[node name="Track4" type="Panel" parent="TrackUI/TrackArea/Visual/Tracks" unique_id=1452375806]
+custom_minimum_size = Vector2(85, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_6vu4k")
+
+[node name="FileDialogOpen" type="FileDialog" parent="." unique_id=2130995763]
+title = "Open a File"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.json ; 谱面文件 (*.json)")
+use_native_dialog = true
+
+[node name="FileDialogSave" type="FileDialog" parent="." unique_id=950575173]
+title = "保存谱面"
+access = 2
+filters = PackedStringArray("*.json ; 谱面文件 (*.json)")
+use_native_dialog = true
+
+[node name="FileDialogJacket" type="FileDialog" parent="." unique_id=1644156738]
+title = "Open a File"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.png, *.jpg, *.jpeg, *.bmp, *.webp ; 图片文件")
+use_native_dialog = true
+
+[node name="FileDialogAudio" type="FileDialog" parent="." unique_id=1666804886]
+title = "Open a File"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.mp3, *.ogg, *.wav, *.flac ; 音频文件")
+use_native_dialog = true
+
+[node name="FileDialogExport" type="FileDialog" parent="." unique_id=2043367842]
+title = "导出谱面压缩包"
+access = 2
+filters = PackedStringArray("*.lpz ; 谱面压缩包 (*.lpz)")
+use_native_dialog = true
+
+[node name="WarningDialog" type="AcceptDialog" parent="." unique_id=1853697896]
+title = "提示"
+ok_button_text = "确定"
+
+[node name="ConfirmDialog" type="ConfirmationDialog" parent="." unique_id=902098767]
+title = "未保存的更改"
+unresizable = true
+ok_button_text = "保存"
+dialog_autowrap = true
+cancel_button_text = "取消"
