@@ -165,6 +165,26 @@ func test_normalize_changed_fixes_size_and_range() -> void:
 	assert_eq(fixed[3], 4, "缺失位取默认值")
 
 
+func test_effect_type_heart_sits_after_change() -> void:
+	assert_eq(ChartDefs.effect_type_index(ChartDefs.EFFECT_TYPE_HEART), 1,
+		"索引与属性面板下拉的选项顺序一致")
+	assert_eq(ChartDefs.effect_type_at(1), ChartDefs.EFFECT_TYPE_HEART)
+
+
+func test_make_effect_heart_shares_fields_with_change() -> void:
+	var effect := ChartDefs.make_effect(ChartDefs.EFFECT_TYPE_HEART, 500, 200)
+	assert_eq(effect["type"], "heart")
+	assert_eq(effect["time"], 500)
+	assert_eq(effect["duration"], 200)
+	assert_eq(effect["changed"], ChartDefs.EFFECT_DEFAULT_CHANGED, "heart 与 change 参数集合相同")
+
+
+func test_effect_color_differs_per_type() -> void:
+	assert_ne(ChartDefs.effect_color(ChartDefs.EFFECT_TYPE_HEART),
+		ChartDefs.effect_color(ChartDefs.EFFECT_TYPE_CHANGE), "两类特效在轨道区要能分辨")
+	assert_eq(ChartDefs.effect_color("bogus"), ChartDefs.EFFECT_COLOR, "未知类型用默认色")
+
+
 func test_difficulty_index_falls_back_to_first() -> void:
 	assert_eq(ChartDefs.difficulty_index("EZ"), 0)
 	assert_eq(ChartDefs.difficulty_index("HD"), 2)

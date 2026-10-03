@@ -26,15 +26,18 @@ const HOLD_DEFAULT_DURATION_MS: int = 500
 const NOTE_LEGACY_MAP_FIELD: String = "map"
 
 # --- 特效 ---
-## 可用的特效种类；新增种类时同步添加对应的标签与默认值
-const EFFECT_TYPES: Array[String] = ["change"]
+## 可用的特效种类；顺序与属性面板下拉的选项顺序一致。
+## 新增种类时同步补上 `EFFECT_TYPE_*` 常量、`effect_color()` 的配色与下拉里的选项文本；
+## 各类型的参数集合相同（time / duration / changed），所以 make_effect() 无需按类型分支。
+const EFFECT_TYPES: Array[String] = ["change", "heart"]
 const EFFECT_TYPE_CHANGE: String = "change"
-## change 特效的 changed 列表长度固定为轨道数，每项是 1..NUM_TRACKS 的目标轨
+const EFFECT_TYPE_HEART: String = "heart"
+## changed 列表长度固定为轨道数，每项是 1..NUM_TRACKS 的目标轨
 const EFFECT_CHANGED_SIZE: int = NUM_TRACKS
 const EFFECT_DEFAULT_CHANGED: Array[int] = [1, 2, 3, 4]
 const EFFECT_DEFAULT_DURATION_MS: int = 1000
 const EFFECT_MIN_DURATION_MS: int = 1
-## 轨道区标记特效区间的颜色
+## 轨道区标记特效区间的默认颜色（未知类型回落到这个）
 const EFFECT_COLOR: Color = Color(0.62, 0.40, 0.95)
 
 # --- 谱面元数据 ---
@@ -204,6 +207,13 @@ static func effect_type_at(index: int) -> String:
 	if index < 0 or index >= EFFECT_TYPES.size():
 		return EFFECT_TYPES[0]
 	return EFFECT_TYPES[index]
+
+
+## 特效区间的标记配色：按类型区分，未知类型回落到 EFFECT_COLOR
+static func effect_color(type: String) -> Color:
+	match type:
+		EFFECT_TYPE_HEART: return Color(0.90, 0.25, 0.40)
+		_:                 return EFFECT_COLOR
 
 
 ## 把任意长度 / 越界的轨道变换列表整理成恰好 EFFECT_CHANGED_SIZE 项、取值 1..NUM_TRACKS

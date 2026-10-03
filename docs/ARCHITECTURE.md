@@ -83,17 +83,22 @@ MainEditor（ui/main_editor/main_editor.tscn）
 
 ```json
 "Effects": [
-    { "type": "change", "time": 5000, "changed": [2, 3, 4, 1], "duration": 2000 }
+    { "type": "change", "time": 5000, "changed": [2, 3, 4, 1], "duration": 2000 },
+    { "type": "heart",  "time": 8000, "changed": [1, 2, 3, 4], "duration": 1000 }
 ]
 ```
 
+- `type` 目前有 `change`（轨道变换）与 `heart`（心跳）两种。两者的参数集合完全相同
+  （`time` / `duration` / `changed`），因此 `make_effect()` 不按类型分支；差别只在属性面板的
+  显示名与轨道区的配色，新增种类时补 `EFFECT_TYPES`、`EFFECT_TYPE_*` 常量、`effect_color()`
+  与下拉里的选项文本即可（下拉文本硬编码在 `.tscn` 里，顺序须与 `EFFECT_TYPES` 一致）；
 - `time` 是开始时间，`duration` 是持续时间；面板上按「开始时间 / 结束时间」两个字段编辑，
   改任一端都保持另一端不动（时长随之伸缩）；
 - `changed` 固定 `EFFECT_CHANGED_SIZE`（= 轨道数）项，每项取值 1..`NUM_TRACKS`；
   面板上用逗号分隔填写，
   `ChartDefs.normalize_changed()` 负责把填写的列表补足 / 收敛到合法范围；
 - 定义与构造集中在 `ChartDefs` 的「特效」段（`EFFECT_TYPES` / `make_effect()` /
-  `effect_end_time()` / `EFFECT_COLOR`），`ChartData.effects` 与序列化、撤销快照、
+  `effect_end_time()` / `effect_color()`），`ChartData.effects` 与序列化、撤销快照、
   `get_max_scroll_time()` 同步维护。
 
 放置流程（两次点击定区间）：
@@ -108,7 +113,8 @@ EditorVisual.begin_effect_placement(index)     光标变十字，进入放置模
         └─ 第 2 次点击 → 写入 duration = max(点击时间 − time, EFFECT_MIN_DURATION_MS)，退出放置
 ```
 
-`VisualRenderer._draw_effects()` 把区间画成横跨四条轨道的半透明色带，作为背景层画在
+`VisualRenderer._draw_effects()` 把区间画成横跨四条轨道的半透明色带（配色按 `type` 取，
+所以 change 与 heart 一眼能分辨），作为背景层画在
 网格线与音符**之下**（`draw_all()` 里的顺序是 底色 → 特效 → 网格线 → 音符 → 播放头），
 开始 / 结束各有一条边界线，选中时加白色描边。音符命中优先于特效，
 因此铺满轨道区的色带不会挡住音符的选中与拖拽。

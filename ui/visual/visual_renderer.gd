@@ -12,7 +12,7 @@ const MIN_NOTE_WIDTH: float = 8.0
 const BACKGROUND_COLOR := Color(0.08, 0.08, 0.10)
 const PLAYHEAD_COLOR := Color(0.3, 0.7, 1.0, 0.85)
 const SELECTION_COLOR := Color(1, 1, 1, 0.8)
-## 特效区间的填充 / 边框透明度（颜色取自 ChartDefs.EFFECT_COLOR）
+## 特效区间的填充 / 边框透明度（颜色按类型取自 ChartDefs.effect_color()）
 const EFFECT_FILL_ALPHA: float = 0.16
 const EFFECT_BORDER_ALPHA: float = 0.9
 
@@ -80,12 +80,12 @@ static func _draw_grid_lines(ci: Control, geom: VisualGeometry, w: float, h: flo
 ## 特效区间：横跨全部轨道的时间色带，画在网格线之下作为背景层
 static func _draw_effects(ci: Control, geom: VisualGeometry, w: float, h: float,
 		selected_effect_index: int) -> void:
-	var color := ChartDefs.EFFECT_COLOR
-	var fill := Color(color.r, color.g, color.b, EFFECT_FILL_ALPHA)
-	var border := Color(color.r, color.g, color.b, EFFECT_BORDER_ALPHA)
-
 	for index in range(ChartData.effects.size()):
 		var effect: Dictionary = ChartData.effects[index]
+		var effect_type: String = effect.get("type", "")
+		var color := ChartDefs.effect_color(effect_type)
+		var fill := Color(color.r, color.g, color.b, EFFECT_FILL_ALPHA)
+		var border := Color(color.r, color.g, color.b, EFFECT_BORDER_ALPHA)
 		var y_start := geom.time_to_y(float(effect.get("time", 0)))
 		var y_end := geom.time_to_y(float(ChartDefs.effect_end_time(effect)))
 

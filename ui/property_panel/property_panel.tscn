@@ -390,9 +390,11 @@ text = "特效类型"
 
 [node name="EffectTypeOption" type="OptionButton" parent="HBox/ContentScroll/Content/EffectContainer" unique_id=2147000004]
 layout_mode = 2
-item_count = 1
+item_count = 2
 popup/item_0/text = "change (轨道变换)"
 popup/item_0/id = 0
+popup/item_1/text = "heart (心跳)"
+popup/item_1/id = 1
 
 [node name="GapEffectStart" type="Control" parent="HBox/ContentScroll/Content/EffectContainer" unique_id=2147000005]
 custom_minimum_size = Vector2(0, 8)
