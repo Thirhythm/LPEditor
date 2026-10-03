@@ -38,6 +38,18 @@ func test_dict_round_trip_keeps_metadata_and_notes() -> void:
 	assert_eq(ChartData.notes[0]["duration"], 300)
 
 
+## 心键的 map 字段已废弃：载入旧谱面时剔除，重新保存后不再导出
+func test_load_from_dict_drops_legacy_heart_map() -> void:
+	ChartData.load_from_dict({
+		"HitObjects": [{"type": "heart", "time": 100, "column": 3, "map": [4, 2, 3, 1]}],
+	})
+
+	assert_eq(ChartData.notes.size(), 1)
+	assert_false(ChartData.notes[0].has("map"), "载入时应剔除废弃的 map 字段")
+	var exported: Dictionary = (ChartData.to_dict()["HitObjects"] as Array)[0]
+	assert_false(exported.has("map"), "导出结果也不应包含 map")
+
+
 # --- General 字段 ---
 
 func test_general_writes_artist_illustrator_and_preview_fields() -> void:

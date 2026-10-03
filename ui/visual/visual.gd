@@ -272,7 +272,7 @@ func _hit_test_note(pos: Vector2, track: int) -> int:
 		var nt := note.get("time", 0) as int
 		var ny := time_to_y(nt)
 
-		if note.get("type", "") == "hold" and note.has("duration"):
+		if ChartDefs.is_hold(note):
 			var dur := note.get("duration", 0) as int
 			var end_y := time_to_y(float(nt + dur))
 			if pos.y >= end_y - 4 and pos.y <= ny + 4:
@@ -292,7 +292,7 @@ func _hit_test_hold_tail(pos: Vector2, track: int) -> int:
 		var note: Dictionary = ChartData.notes[ni]
 		if note.get("column", 1) as int != track:
 			continue
-		if note.get("type", "") != "hold" or not note.has("duration"):
+		if not ChartDefs.is_hold(note):
 			continue
 		var nt := note.get("time", 0) as int
 		var dur := note.get("duration", 0) as int

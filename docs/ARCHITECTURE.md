@@ -90,7 +90,7 @@ MainEditor（ui/main_editor/main_editor.tscn）
 - `time` 是开始时间，`duration` 是持续时间；面板上按「开始时间 / 结束时间」两个字段编辑，
   改任一端都保持另一端不动（时长随之伸缩）；
 - `changed` 固定 `EFFECT_CHANGED_SIZE`（= 轨道数）项，每项取值 1..`NUM_TRACKS`；
-  面板上用逗号分隔填写（与 heart 音符的 `map` 同一套写法），
+  面板上用逗号分隔填写，
   `ChartDefs.normalize_changed()` 负责把填写的列表补足 / 收敛到合法范围；
 - 定义与构造集中在 `ChartDefs` 的「特效」段（`EFFECT_TYPES` / `make_effect()` /
   `effect_end_time()` / `EFFECT_COLOR`），`ChartData.effects` 与序列化、撤销快照、
@@ -169,6 +169,9 @@ Preview / PreviewEnd / Crystal / Chapter / JacketPath / AudioPath
 - `JacketPath` / `AudioPath` 是编辑器选文件用的本地路径，导出时会被剔除。
 
 载入旧谱面时若没有 `Artist` 字段，会回退读取旧的 `Producer`，重新保存即升级成新格式。
+心键（`heart`）的 `map` 字段已废弃：`ChartData.load_from_dict()` 载入时按
+`ChartDefs.NOTE_LEGACY_MAP_FIELD` 把它从音符里剔除，`ChartDefs.normalize_note_fields()`
+在改变音符类型时还会再清一次；重新保存即完成升级，导出结果不再包含该字段。
 
 ### 未保存更改
 

@@ -46,8 +46,6 @@ var selected_effect_index: int = -1
 @onready var _note_column_spin: SpinBox = $HBox/ContentScroll/Content/NoteContainer/NoteColumnSpin
 @onready var _hold_duration_container: VBoxContainer = $HBox/ContentScroll/Content/NoteContainer/HoldDurationContainer
 @onready var _hold_duration_spin: SpinBox = $HBox/ContentScroll/Content/NoteContainer/HoldDurationContainer/HoldDurationSpin
-@onready var _heart_map_container: VBoxContainer = $HBox/ContentScroll/Content/NoteContainer/HeartMapContainer
-@onready var _heart_map_edit: LineEdit = $HBox/ContentScroll/Content/NoteContainer/HeartMapContainer/HeartMapEdit
 
 # --- 特效属性 UI 控件 ---
 @onready var _effect_container: VBoxContainer = $HBox/ContentScroll/Content/EffectContainer
@@ -118,8 +116,6 @@ func _connect_scene_signals() -> void:
 	_note_time_spin.value_changed.connect(_on_note_time_changed)
 	_note_column_spin.value_changed.connect(_on_note_column_changed)
 	_hold_duration_spin.value_changed.connect(_on_hold_duration_changed)
-	_heart_map_edit.text_changed.connect(_on_heart_map_changed)
-	_heart_map_edit.focus_entered.connect(_reset_text_undo)
 
 	_effect_type_option.item_selected.connect(_on_effect_type_changed)
 	_effect_start_spin.value_changed.connect(_on_effect_start_changed)
@@ -214,33 +210,18 @@ func _refresh_note_fields() -> void:
 	if selected_note.is_empty():
 		return
 
-	var ntype = selected_note.get("type", "tap")
-	var type_idx: int
-	match ntype:
-		"drag":     type_idx = 1
-		"release":  type_idx = 2
-		"hold":     type_idx = 3
-		"heart":    type_idx = 4
-		_:          type_idx = 0
+	var ntype: String = selected_note.get("type", ChartDefs.NOTE_TYPES[0])
 	_note_type_option.set_block_signals(true)
-	_note_type_option.select(type_idx)
+	_note_type_option.select(ChartDefs.note_type_index(ntype))
 	_note_type_option.set_block_signals(false)
 
 	_note_time_spin.set_value_no_signal(selected_note.get("time", 0) as float)
 	_note_column_spin.set_value_no_signal(selected_note.get("column", 1) as float)
 
-	var is_hold = ntype == "hold"
+	var is_hold := ntype == ChartDefs.NOTE_TYPE_HOLD
 	_hold_duration_container.visible = is_hold
 	if is_hold:
 		_hold_duration_spin.set_value_no_signal(selected_note.get("duration", 0) as float)
-
-	var is_heart = ntype == "heart"
-	_heart_map_container.visible = is_heart
-	if is_heart:
-		var arr: Array = selected_note.get("map", [])
-		_heart_map_edit.set_block_signals(true)
-		_heart_map_edit.text = ",".join(arr)
-		_heart_map_edit.set_block_signals(false)
 
 func _refresh_effect_fields() -> void:
 	if selected_effect.is_empty():
@@ -435,25 +416,8 @@ func _on_note_type_changed(index: int) -> void:
 	if selected_note.is_empty():
 		return
 	EditorState.push_undo_state()
-	var type_str: String
-	match index:
-		0: type_str = "tap"
-		1: type_str = "drag"
-		2: type_str = "release"
-		3: type_str = "hold"
-		4: type_str = "heart"
-		_: type_str = "tap"
-
-	selected_note["type"] = type_str
-
-	if type_str == "hold" and not selected_note.has("duration"):
-		selected_note["duration"] = 500
-	if type_str == "heart" and not selected_note.has("map"):
-		selected_note["map"] = [1, 2, 3, 4]
-	if type_str != "hold" and selected_note.has("duration"):
-		selected_note.erase("duration")
-	if type_str != "heart" and selected_note.has("map"):
-		selected_note.erase("map")
+	selected_note["type"] = ChartDefs.note_type_at(index)
+	ChartDefs.normalize_note_fields(selected_note)
 
 	if selected_note_index >= 0 and selected_note_index < ChartData.notes.size():
 		ChartData.notes[selected_note_index] = selected_note
@@ -486,22 +450,6 @@ func _on_hold_duration_changed(value: float) -> void:
 	selected_note["duration"] = int(value)
 	if selected_note_index >= 0 and selected_note_index < ChartData.notes.size():
 		ChartData.notes[selected_note_index] = selected_note
-	emit_signal("note_changed", selected_note_index)
-
-func _on_heart_map_changed(new_text: String) -> void:
-	if selected_note.is_empty():
-		return
-	_push_text_undo()
-	var parts := new_text.split(",", false)
-	var arr: Array[int] = []
-	for p in parts:
-		var num := p.strip_edges().to_int()
-		if num >= 1 and num <= 4:
-			arr.append(num)
-	if not arr.is_empty():
-		selected_note["map"] = arr
-		if selected_note_index >= 0 and selected_note_index < ChartData.notes.size():
-			ChartData.notes[selected_note_index] = selected_note
 	emit_signal("note_changed", selected_note_index)
 
 # --- 特效属性编辑回调 ---
@@ -541,7 +489,7 @@ func _on_effect_end_changed(value: float) -> void:
 	_commit_effect()
 	_refresh_effect_fields()
 
-## changed 用逗号分隔填写（与 heart 的 map 同一套写法），长度与取值由 normalize_changed 收敛
+## changed 用逗号分隔填写，长度与取值由 normalize_changed 收敛
 func _on_effect_changed_text_changed(new_text: String) -> void:
 	if selected_effect.is_empty():
 		return

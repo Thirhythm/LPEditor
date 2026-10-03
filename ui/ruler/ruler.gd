@@ -153,7 +153,7 @@ func _draw_track_thumbnail(w: float) -> void:
 			var y0: float = track_area_top + col * track_h
 			var mid_y: float = y0 + track_h / 2.0
 
-			if note_type == "hold" and note.has("duration"):
+			if ChartDefs.is_hold(note):
 				var dur := note.get("duration", 0) as int
 				var end_x := time_to_x(t + dur)
 				var bar_y := mid_y - 2.0

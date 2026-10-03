@@ -7,7 +7,6 @@
 [ext_resource type="Texture2D" uid="uid://7gnw7ony2aac" path="res://assets/icons/music-note.svg" id="5_uptup"]
 [ext_resource type="Script" uid="uid://sfdqcrxaybh7" path="res://audio/audio_manager.gd" id="6_audio"]
 [ext_resource type="Texture2D" uid="uid://cupgnefvnrdob" path="res://assets/icons/play-circle-fill.svg" id="6_hvl7u"]
-[ext_resource type="Texture2D" uid="uid://dsc6pg5qghhwh" path="res://assets/icons/speedometer2.svg" id="8_xl04w"]
 [ext_resource type="PackedScene" uid="uid://bx8x40do7fsr4" path="res://ui/property_panel/property_panel.tscn" id="9_06sh7"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yfgv8"]
@@ -175,7 +174,6 @@ size_flags_horizontal = 3
 layout_mode = 2
 disabled = true
 text = "变速"
-icon = ExtResource("8_xl04w")
 
 [node name="EffectButton" type="Button" parent="Panel/VBoxContainer/ParkPanel/HBoxContainer/List2/ActionItems" unique_id=2147000020]
 layout_mode = 2

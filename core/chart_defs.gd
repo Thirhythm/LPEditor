@@ -22,8 +22,8 @@ const NOTE_TYPE_LABELS: Array[String] = ["Tap", "Drag", "Release", "Hold", "Hear
 const NOTE_TYPE_HOLD: String = "hold"
 const NOTE_TYPE_HEART: String = "heart"
 const HOLD_DEFAULT_DURATION_MS: int = 500
-## heart 音符默认目标轨（谱面格式要求 1..NUM_TRACKS）
-const HEART_DEFAULT_MAP: Array[int] = [1, 2, 3, 4]
+## 已废弃的心键字段名：旧谱面里的 `map` 会在载入与类型归一化时被清掉
+const NOTE_LEGACY_MAP_FIELD: String = "map"
 
 # --- 特效 ---
 ## 可用的特效种类；新增种类时同步添加对应的标签与默认值
@@ -148,7 +148,35 @@ static func tool_note_type(index: int) -> String:
 	return NOTE_TYPES[type_index]
 
 
-## 新建一个音符字典（hold / heart 会带上各自附加字段）
+## 属性面板「音符类型」下拉的索引（与 NOTE_TYPES 顺序一致，0 = tap）
+static func note_type_index(type: String) -> int:
+	var idx := NOTE_TYPES.find(type)
+	return idx if idx >= 0 else 0
+
+
+## 属性面板「音符类型」下拉索引对应的类型名（越界回退到 NOTE_TYPES[0]）
+static func note_type_at(index: int) -> String:
+	if index < 0 or index >= NOTE_TYPES.size():
+		return NOTE_TYPES[0]
+	return NOTE_TYPES[index]
+
+# 整理音符的「类型专属字段」：
+##   * 长键：补上缺失的 duration；
+##   * 其余类型：删掉 duration；
+##   * 心键：不再有任何专属字段，顺手清掉旧谱面残留的 map。
+## 面板与测试共用这条规则，不必各自记一遍。
+static func normalize_note_fields(note: Dictionary) -> void:
+	if note.get("type", "") == NOTE_TYPE_HOLD:
+		if not note.has("duration"):
+			note["duration"] = HOLD_DEFAULT_DURATION_MS
+	else:
+		note.erase("duration")
+	if is_heart(note):
+		note.erase(NOTE_LEGACY_MAP_FIELD)
+
+
+#
+## 新建一个音符字典（长键额外带上 duration）
 static func make_note(type: String, time_ms: int, column: int) -> Dictionary:
 	var note := {
 		"type": type if not type.is_empty() else NOTE_TYPES[0],
@@ -157,8 +185,6 @@ static func make_note(type: String, time_ms: int, column: int) -> Dictionary:
 	}
 	if note["type"] == NOTE_TYPE_HOLD:
 		note["duration"] = HOLD_DEFAULT_DURATION_MS
-	elif note["type"] == NOTE_TYPE_HEART:
-		note["map"] = HEART_DEFAULT_MAP.duplicate()
 	return note
 
 

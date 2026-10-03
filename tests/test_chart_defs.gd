@@ -74,13 +74,34 @@ func test_make_note_adds_type_specific_fields() -> void:
 	assert_eq(hold["duration"], ChartDefs.HOLD_DEFAULT_DURATION_MS)
 
 	var heart := ChartDefs.make_note("heart", 100, 2)
-	assert_true(heart.has("map"))
-	assert_eq((heart["map"] as Array).size(), ChartDefs.NUM_TRACKS)
+	assert_false(heart.has("map"), "心键不再携带 map 字段")
 
 
 func test_make_note_defaults_to_tap_for_unknown_type() -> void:
 	assert_eq(ChartDefs.make_note("", 0, 1)["type"], "tap")
 	assert_eq(ChartDefs.make_note("bogus", 0, 1)["type"], "bogus", "未知类型按原样保留")
+
+
+func test_note_type_index_and_at_round_trip() -> void:
+	for i in range(ChartDefs.NOTE_TYPES.size()):
+		assert_eq(ChartDefs.note_type_index(ChartDefs.note_type_at(i)), i)
+	assert_eq(ChartDefs.note_type_index("bogus"), 0, "未知类型回退到 tap")
+	assert_eq(ChartDefs.note_type_at(999), ChartDefs.NOTE_TYPES[0], "越界索引回退到 tap")
+
+
+func test_normalize_note_fields_keeps_only_type_specific_fields() -> void:
+	var hold := {"type": "hold", "time": 0, "column": 1}
+	ChartDefs.normalize_note_fields(hold)
+	assert_eq(hold["duration"], ChartDefs.HOLD_DEFAULT_DURATION_MS, "长键补上默认时长")
+
+	var tap := {"type": "tap", "time": 0, "column": 1, "duration": 999}
+	ChartDefs.normalize_note_fields(tap)
+	assert_false(tap.has("duration"), "非长键不应保留 duration")
+
+	var heart := {"type": "heart", "time": 0, "column": 1, "map": [4, 2, 3, 1]}
+	ChartDefs.normalize_note_fields(heart)
+	assert_true(ChartDefs.is_heart(heart), "is_heart 应按类型判定，与是否携带附加字段无关")
+	assert_false(heart.has("map"), "心键不携带任何附加字段，旧的 map 会被清掉")
 
 
 func test_tool_note_type_maps_index_zero_to_select_mode() -> void:

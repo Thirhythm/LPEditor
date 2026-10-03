@@ -373,26 +373,6 @@ min_value = 1.0
 max_value = 99999999.0
 value = 500.0
 
-[node name="HeartMapContainer" type="VBoxContainer" parent="HBox/ContentScroll/Content/NoteContainer" unique_id=2039269878]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="GapHeartMap" type="Control" parent="HBox/ContentScroll/Content/NoteContainer/HeartMapContainer" unique_id=1713891320]
-custom_minimum_size = Vector2(0, 8)
-layout_mode = 2
-
-[node name="HeartMapLabel" type="Label" parent="HBox/ContentScroll/Content/NoteContainer/HeartMapContainer" unique_id=985320020]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.6, 0.6509804, 1)
-theme_override_font_sizes/font_size = 12
-text = "轨道映射 (map)"
-
-[node name="HeartMapEdit" type="LineEdit" parent="HBox/ContentScroll/Content/NoteContainer/HeartMapContainer" unique_id=1158420895]
-layout_mode = 2
-size_flags_horizontal = 3
-placeholder_text = "e.g. 4,2,3,1"
-
 [node name="EffectContainer" type="VBoxContainer" parent="HBox/ContentScroll/Content" unique_id=2147000001]
 visible = false
 layout_mode = 2

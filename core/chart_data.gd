@@ -104,7 +104,10 @@ static func load_from_dict(data: Dictionary) -> void:
 
 	notes.clear()
 	for obj in data.get("HitObjects", []):
-		notes.append(obj.duplicate(true))
+		var note: Dictionary = obj.duplicate(true)
+		# 心键的 map 字段已废弃，载入旧谱面时一并剔除，重新保存即升级成新格式
+		note.erase(ChartDefs.NOTE_LEGACY_MAP_FIELD)
+		notes.append(note)
 
 	effects.clear()
 	for obj in data.get("Effects", []):
