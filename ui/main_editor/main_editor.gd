@@ -107,6 +107,9 @@ func _process(_delta: float) -> void:
 	EditorState.clamp_scroll()
 	ruler.queue_redraw()
 
+	# 音符头到达判定线时出声（判定线所在时间即当前播放时间，见 VisualGeometry）
+	audio.advance_note_sfx(time_ms, ChartData.notes)
+
 # --- 整体布局 ---
 
 ## 重算两处会随窗口变化的几何：主内容列的底边，以及轨道编辑区的矩形。
@@ -423,7 +426,7 @@ func _on_open_file_selected(path: String) -> void:
 		return
 
 	EditorState.push_undo_state()
-	ChartData.load_from_dict(result["data"])
+	ChartData.load_from_dict(result["data"], path)
 	ChartData.current_file_path = path
 	EditorState.mark_saved()	# 刚载入的内容即「已保存」基准
 	_after_chart_loaded(path)
@@ -452,7 +455,9 @@ func _on_save_file_selected(path: String) -> void:
 	_do_save(path)
 
 func _do_save(path: String) -> bool:
-	var result := ChartIO.save_chart(path, ChartData.to_dict())
+	# to_dict 按「保存到哪儿」算资产的相对路径；另存为时目标与 current_file_path 不同，
+	# 所以传目标路径，而不是让它去读那个字段
+	var result := ChartIO.save_chart(path, ChartData.to_dict(path))
 	if not result["ok"]:
 		_update_status(result["error"])
 		# 保存失败：放弃挂起的操作（如退出），避免带着未保存的改动继续
@@ -519,8 +524,9 @@ func _export_chart() -> void:
 
 func _on_export_file_selected(path: String) -> void:
 	var final_path := ChartIO.ensure_extension(path)
+	# 导出包里 AudioPath / JacketPath 会被剔除（素材随包携带），传目标路径只为保持一致性
 	var result := ChartIO.export_lpz(
-		final_path, ChartData.to_dict(), ChartData.audio_path, ChartData.jacket_path
+		final_path, ChartData.to_dict(final_path), ChartData.audio_path, ChartData.jacket_path
 	)
 	if result["ok"]:
 		_update_status("导出成功: %s" % final_path.get_file())

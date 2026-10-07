@@ -38,6 +38,28 @@ func test_dict_round_trip_keeps_metadata_and_notes() -> void:
 	assert_eq(ChartData.notes[0]["duration"], 300)
 
 
+## 谱面里记的是相对自身的资产路径；载入时按谱面位置还原，面板与播放器才用得上
+func test_asset_paths_are_relative_to_the_chart_file() -> void:
+	ChartData.jacket_path = "D:/charts/song/cover.png"
+	ChartData.audio_path = "D:/charts/song/audio.wav"
+
+	var data := ChartData.to_dict("D:/charts/song/song.lp")
+	var general: Dictionary = data["General"]
+	assert_eq(general["JacketPath"], "cover.png")
+	assert_eq(general["AudioPath"], "audio.wav")
+
+	ChartData.new_chart()
+	ChartData.load_from_dict(data, "D:/charts/song/song.lp")
+	assert_eq(ChartData.jacket_path, "D:/charts/song/cover.png")
+	assert_eq(ChartData.audio_path, "D:/charts/song/audio.wav")
+
+
+## 不传谱面路径时不做换算：撤销指纹（EditorState.document_signature）走的就是这条路
+func test_asset_paths_without_chart_path_are_untouched() -> void:
+	ChartData.audio_path = "D:/charts/song/audio.wav"
+	assert_eq(ChartData.to_dict()["General"]["AudioPath"], "D:/charts/song/audio.wav")
+
+
 ## 心键的 map 字段已废弃：载入旧谱面时剔除，重新保存后不再导出
 func test_load_from_dict_drops_legacy_heart_map() -> void:
 	ChartData.load_from_dict({

@@ -31,6 +31,8 @@ script = ExtResource("6_audio")
 
 [node name="Player" type="AudioStreamPlayer" parent="AudioManager" unique_id=782468219]
 
+[node name="Sfx" type="AudioStreamPlayer" parent="AudioManager" unique_id=782468220]
+
 [node name="Panel" type="Control" parent="." unique_id=1998989861]
 layout_mode = 1
 anchors_preset = 15

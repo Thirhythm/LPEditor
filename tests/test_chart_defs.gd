@@ -122,6 +122,77 @@ func test_heart_color_is_the_dark_red() -> void:
 	assert_ne(ChartDefs.note_color("heart"), ChartDefs.note_color("tap"), "与蓝键同形状但不同色")
 
 
+# --- 到达判定线 ---
+
+func test_note_hits_use_half_open_window() -> void:
+	var notes: Array[Dictionary] = [
+		{"type": "tap", "time": 100, "column": 1},
+		{"type": "tap", "time": 200, "column": 2},
+		{"type": "tap", "time": 300, "column": 3},
+	]
+	assert_eq(ChartDefs.note_hits_in_range(notes, 100, 200), 1, "区间起点自身不算到达")
+	assert_eq(ChartDefs.note_hits_in_range(notes, 0, 100), 1, "起点之后的第一个音符算到达")
+	assert_eq(ChartDefs.note_hits_in_range(notes, 100, 300), 2, "区间终点算到达")
+	assert_eq(ChartDefs.note_hits_in_range(notes, 0, 1000), 3, "一帧跨过多个音符时全部计入")
+	assert_eq(ChartDefs.note_hits_in_range(notes, 300, 400), 0)
+	assert_eq(ChartDefs.note_hits_in_range(notes, 200, 200), 0, "零宽区间没有到达")
+	assert_eq(ChartDefs.note_hits_in_range(notes, 300, 200), 0, "时间倒退不触发")
+
+
+func test_note_hits_count_hold_head_only() -> void:
+	var notes: Array[Dictionary] = [
+		{"type": "hold", "time": 100, "column": 1, "duration": 500},
+	]
+	assert_eq(ChartDefs.note_hits_in_range(notes, 0, 100), 1, "长键头部过线即触发")
+	assert_eq(ChartDefs.note_hits_in_range(notes, 100, 600), 0, "尾部结束时间不触发")
+
+
+# --- 资产路径 ---
+
+func test_asset_path_is_written_relative_to_chart() -> void:
+	var chart := "D:/charts/song/song.lp"
+	assert_eq(ChartDefs.to_relative_asset_path("D:/charts/song/audio.wav", chart), "audio.wav",
+		"同目录下只留文件名")
+	assert_eq(ChartDefs.to_relative_asset_path("D:/charts/song/sfx/a.wav", chart), "sfx/a.wav")
+	assert_eq(ChartDefs.to_relative_asset_path("D:/charts/a.wav", chart), "../a.wav")
+	assert_eq(ChartDefs.to_relative_asset_path("D:/x/y/a.wav", chart), "../../x/y/a.wav")
+	assert_eq(ChartDefs.to_relative_asset_path("D:/charts/song2/a.wav", chart), "../song2/a.wav",
+		"同名前缀的兄弟目录不能被当成同一层")
+
+
+func test_asset_path_relative_keeps_foreign_paths_intact() -> void:
+	assert_eq(ChartDefs.to_relative_asset_path("", "D:/c/song.lp"), "", "空串保持空")
+	assert_eq(ChartDefs.to_relative_asset_path("audio.wav", "D:/c/song.lp"), "audio.wav",
+		"本来就相对的不动它")
+	assert_eq(ChartDefs.to_relative_asset_path("res://audio/note.wav", "D:/c/song.lp"),
+		"res://audio/note.wav", "res:// 本身可移植，不参与相对化")
+	assert_eq(ChartDefs.to_relative_asset_path("D:/a.wav", ""), "D:/a.wav", "没有谱面路径可比对")
+	assert_eq(ChartDefs.to_relative_asset_path("C:/a.wav", "D:/c/song.lp"), "C:/a.wav",
+		"跨盘符不存在相对路径")
+
+
+func test_asset_path_absolute_resolves_against_chart() -> void:
+	var chart := "D:/charts/song.lp"
+	assert_eq(ChartDefs.to_absolute_asset_path("audio.wav", chart), "D:/charts/audio.wav")
+	assert_eq(ChartDefs.to_absolute_asset_path("sfx/a.wav", chart), "D:/charts/sfx/a.wav")
+	assert_eq(ChartDefs.to_absolute_asset_path("../a.wav", chart), "D:/a.wav", "上跳要消掉")
+	assert_eq(ChartDefs.to_absolute_asset_path("D:/old/a.wav", chart), "D:/old/a.wav",
+		"旧谱面存的绝对路径原样可用")
+	assert_eq(ChartDefs.to_absolute_asset_path("res://audio/note.wav", chart),
+		"res://audio/note.wav")
+	assert_eq(ChartDefs.to_absolute_asset_path("audio.wav", ""), "audio.wav", "没有谱面路径时不猜")
+	assert_eq(ChartDefs.to_absolute_asset_path("D:\\charts\\song\\audio.wav", chart),
+		"D:\\charts\\song\\audio.wav", "反斜杠的绝对路径也要认出来")
+
+
+func test_asset_path_round_trip_survives_normalization() -> void:
+	var chart := "D:/charts/song/song.lp"
+	var asset := "D:/charts/song/sfx/drum.wav"
+	assert_eq(
+		ChartDefs.to_absolute_asset_path(ChartDefs.to_relative_asset_path(asset, chart), chart),
+		asset, "相对化再还原应回到原路径")
+
+
 # --- 特效 ---
 
 func test_effect_end_time_adds_duration() -> void:

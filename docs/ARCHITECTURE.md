@@ -45,7 +45,7 @@ EditorState.push_undo_state()
 
 ```
 MainEditor（ui/main_editor/main_editor.tscn）
-├─ AudioManager           播放控制；音频分析结果写入 ChartData
+├─ AudioManager           播放控制 + 音符音效；音频分析结果写入 ChartData
 ├─ Panel/…/List, List2    工具列表（ToolList，按钮由场景编排）
 ├─ Panel/…/Ruler          EditorRuler：波形 + 缩略图 + 播放头
 ├─ Panel/…/Property       PropertyPanel：元数据 / 音符 / 特效 / 设置，折叠展开
@@ -73,6 +73,13 @@ MainEditor（ui/main_editor/main_editor.tscn）
 - 属性面板的四段内容（谱面 / 音符 / 特效 / 设置）叠起来比一屏还高，所以内容装在
   `HBox/ContentScroll`（`ScrollContainer`）里滚动；外层 `HBox` 必须用全屏 anchors 撑满面板 ——
   `ScrollContainer` 的最小高度不包含内容，若让它按最小尺寸定位，整个面板会塌成一条。
+- 播放时每帧由 `MainEditor._process` 把播放时间推给 `AudioManager.advance_note_sfx()`：
+  头部落在 `(上一帧, 当前帧]` 内的音符响一声 `assets/audio/note.wav`（长键只算头部，尾部不触发）。
+  判定区间由纯函数 `ChartDefs.note_hits_in_range()` 给出，可单测。半开区间意味着**区间起点自身
+  不算到达** —— 这正是「从某处开始播放」和「拖动播放头跳转」不会把跳过的那一段音符一次性补响
+  的原因；游标只在 `start_playback` / `seek` / 暂停 / 停止里随播放计时基准一起重置，
+  所以调用方不必自己记「上一帧在哪儿」。一帧跨过多个音符只出一声：同一个播放器重复 `play`
+  只会从头重放，而同刻的多个音符本来也该听成一次敲击。
 - `ParkPanel` 带 `size_flags_vertical = 3`，会吃掉窗口下方的全部余高（最小 470px）：窗口越大
   面板可视区越高、要滚的越少（1080p 下可视 902px，需滚 318px；1440p 下内容全部可见）。
   主内容列的底边由 `_update_layout()` 钉在状态栏上方，否则伸展开后会铺到窗口底被状态栏压住。
@@ -172,7 +179,20 @@ Preview / PreviewEnd / Crystal / Chapter / JacketPath / AudioPath
 - `Preview` / `PreviewEnd` 是试听区间的起止毫秒值，面板上各有一个「取播放头」按钮回填；
 - `Crystal` 是解锁本曲需要的虚拟货币数，`Chapter` 是所属章节（默认 1）；
 - `Difficulty` 是编辑器保留的难度标记；
-- `JacketPath` / `AudioPath` 是编辑器选文件用的本地路径，导出时会被剔除。
+- `JacketPath` / `AudioPath` 在文件里记的是**相对谱面文件**的路径（素材就在旁边时只写文件名，
+  在上级目录则写 `../…`），这样谱面连同素材一起搬走、或换台机器放到别的盘符根目录下都还指得到。
+  相对化 / 还原分别由 `ChartDefs.to_relative_asset_path()` 与 `to_absolute_asset_path()` 完成，
+  `ChartData.to_dict(chart_path)` / `load_from_dict(data, chart_path)` 负责调用；两边都传
+  **谱面文件本身的路径**而不是目录 —— 分隔符归一化（Windows 原生文件对话框给的是反斜杠，
+  `get_base_dir()` 认不出）与 `.` / `..` 的消解都在里面统一做。
+  撤销指纹 `document_signature()` 走的是不传路径的那条路（不做换算），自比自，不受影响。
+  编辑器内存里、面板上、播放器读的始终是还原后的绝对路径。导出时这两个字段会被剔除
+  （素材随包携带）。
+  无法相对化的情形原样保留：`res://`（本身可移植）、本来就是相对路径、没有谱面路径可比对、
+  以及跨盘符（Windows 上 C: 与 D: 之间不存在相对路径）。旧谱面存的绝对路径也照常可用。
+
+保存时传的是**目标**路径而不是 `current_file_path`：另存为的目标可能和当前文件不同，
+相对路径要按新的位置算。
 
 载入旧谱面时若没有 `Artist` 字段，会回退读取旧的 `Producer`，重新保存即升级成新格式。
 心键（`heart`）的 `map` 字段已废弃：`ChartData.load_from_dict()` 载入时按

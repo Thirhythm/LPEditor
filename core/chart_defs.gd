@@ -133,6 +133,22 @@ static func note_end_time(note: Dictionary) -> int:
 	return start
 
 
+## 统计头部在播放推进中跨过判定线的音符数：头时间落在半开区间 (from_ms, to_ms] 内。
+##
+## 用半开区间是为了「每帧只认本帧新到达的音符」——起点自身不算到达，所以从某个位置
+## 开始播放、或把播放头拖到某处，都不会把这一段里的音符一次性补齐。
+## 长键只算头部（与渲染一致）：尾部时间不参与判定，头一过线就计一次。
+static func note_hits_in_range(notes: Array[Dictionary], from_ms: int, to_ms: int) -> int:
+	if to_ms <= from_ms:
+		return 0
+	var hits := 0
+	for note in notes:
+		var head := note.get("time", 0) as int
+		if head > from_ms and head <= to_ms:
+			hits += 1
+	return hits
+
+
 static func note_color(type: String) -> Color:
 	match type:
 		"tap":     return Color(0.3, 0.6, 1.0)
@@ -236,6 +252,76 @@ static func make_effect(type: String, time_ms: int,
 		"changed": EFFECT_DEFAULT_CHANGED.duplicate(),
 		"duration": maxi(duration_ms, EFFECT_MIN_DURATION_MS),
 	}
+
+
+# --- 资产路径 ---
+
+## 把资产（曲绘 / 音频）路径写成「相对谱面文件」的形式，供存进 JSON 用。
+##
+## 参数都传**谱面文件的完整路径**而不是目录：分隔符的归一化在这里统一做
+## （Windows 原生文件对话框给的是反斜杠，get_base_dir() 认不出），调用方不用自己拆目录。
+##
+## 原样返回的情形：空串、`res://` 路径（本身就可移植）、本来就不是绝对路径、
+## 没有谱面路径可比对，以及跨盘符（Windows 上 C: 与 D: 之间不存在相对路径）。
+static func to_relative_asset_path(path: String, chart_path: String) -> String:
+	var target := _normalize_path(path)
+	var base := _normalize_path(chart_path)
+	if target.is_empty() or path.begins_with("res://") or not target.is_absolute_path():
+		return path
+	if base.is_empty():
+		return path
+
+	var target_parts := target.split("/", false)
+	var base_parts := base.get_base_dir().split("/", false)
+	if target_parts.is_empty() or base_parts.is_empty() or target_parts[0] != base_parts[0]:
+		return path
+
+	# 公共前缀最多推进到文件名之前：同名文件不算「同一层」
+	var common := 0
+	while common < target_parts.size() - 1 and common < base_parts.size() \
+			and target_parts[common] == base_parts[common]:
+		common += 1
+
+	var parts := PackedStringArray()
+	for _i in range(base_parts.size() - common):
+		parts.append("..")
+	for i in range(common, target_parts.size()):
+		parts.append(target_parts[i])
+	return "/".join(parts)
+
+
+## 把谱面里记的资产路径还原成当前机器上可用的路径（载入谱面时用）。
+##
+## 空串、`res://` 路径与本来就是绝对的路径原样返回 —— 旧谱面存的就是绝对路径，
+## 换台机器可能指不到文件，但至少不会因为加了前缀而变得更糟。
+static func to_absolute_asset_path(path: String, chart_path: String) -> String:
+	if path.is_empty() or path.begins_with("res://") or _normalize_path(path).is_absolute_path():
+		return path
+	var base_dir := _normalize_path(chart_path).get_base_dir()
+	if base_dir.is_empty():
+		return path
+	return _normalize_path(base_dir.path_join(path))
+
+
+## 统一分隔符并消掉 `.` / `..` 导航段，让路径比较与拼接不受写法影响。
+## 前导斜杠要留着，否则 `/home/x` 会退化成相对路径。
+static func _normalize_path(path: String) -> String:
+	var unified := path.replace("\\", "/")
+	var prefix := ""
+	if unified.begins_with("//"):
+		prefix = "//"
+	elif unified.begins_with("/"):
+		prefix = "/"
+
+	var parts := PackedStringArray()
+	for part in unified.split("/", false):
+		if part == ".":
+			continue
+		if part == ".." and parts.size() > 0 and parts[parts.size() - 1] != "..":
+			parts.remove_at(parts.size() - 1)
+			continue
+		parts.append(part)
+	return prefix + "/".join(parts)
 
 
 ## 校验谱面是否可以导出，返回缺失项的中文说明列表（空表示通过）

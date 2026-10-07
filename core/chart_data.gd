@@ -81,8 +81,11 @@ static func new_chart() -> void:
 
 # --- 序列化 ---
 
-## 从 JSON dict 加载谱面
-static func load_from_dict(data: Dictionary) -> void:
+## 从 JSON dict 加载谱面。
+##
+## `chart_path` 是这份 JSON 来自哪个文件：谱面里记的曲绘 / 音频是**相对该文件**的路径，
+## 要在这里还原成当前机器上的路径，面板与播放器才能用。不传就按原样收下。
+static func load_from_dict(data: Dictionary, chart_path: String = "") -> void:
 	var general: Dictionary = data.get("General", {})
 	title = general.get("Title", ChartDefs.DEFAULT_TITLE)
 	# Producer 是旧格式的字段名，读不到 Artist 时回退到它，旧谱面不至于丢作者
@@ -93,8 +96,8 @@ static func load_from_dict(data: Dictionary) -> void:
 	difficulty = general.get("Difficulty", ChartDefs.DEFAULT_DIFFICULTY)
 	version = general.get("Version", ChartDefs.DEFAULT_VERSION)
 	bpm = general.get("BPM", ChartDefs.DEFAULT_BPM)
-	jacket_path = general.get("JacketPath", "")
-	audio_path = general.get("AudioPath", "")
+	jacket_path = ChartDefs.to_absolute_asset_path(general.get("JacketPath", ""), chart_path)
+	audio_path = ChartDefs.to_absolute_asset_path(general.get("AudioPath", ""), chart_path)
 	preview_ms = ChartDefs.sanitize_int(general.get("Preview"), 0, 0, ChartDefs.MAX_PREVIEW_MS)
 	preview_end_ms = ChartDefs.sanitize_int(
 		general.get("PreviewEnd"), 0, 0, ChartDefs.MAX_PREVIEW_MS)
@@ -116,8 +119,12 @@ static func load_from_dict(data: Dictionary) -> void:
 	timing_points.clear()
 
 
-## 将当前谱面序列化为 JSON dict
-static func to_dict() -> Dictionary:
+## 将当前谱面序列化为 JSON dict。
+##
+## `chart_path` 是这份 JSON 将要写到的文件：曲绘 / 音频按**相对该文件**的形式记录，
+## 谱面连同素材一起搬走（或换盘符根目录）后仍然指得到。保存时传**目标**路径 ——
+## 另存为的目标可能和 `current_file_path` 不同，所以不在这里读那个字段。
+static func to_dict(chart_path: String = "") -> Dictionary:
 	var general := {
 		"Title": title,
 		"Artist": artist,
@@ -131,8 +138,8 @@ static func to_dict() -> Dictionary:
 		"PreviewEnd": preview_end_ms,
 		"Crystal": crystal,
 		"Chapter": chapter,
-		"JacketPath": jacket_path,
-		"AudioPath": audio_path,
+		"JacketPath": ChartDefs.to_relative_asset_path(jacket_path, chart_path),
+		"AudioPath": ChartDefs.to_relative_asset_path(audio_path, chart_path),
 	}
 
 	var hit_objects: Array[Dictionary] = []
