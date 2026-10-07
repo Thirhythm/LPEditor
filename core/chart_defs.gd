@@ -19,6 +19,7 @@ const TRACK_COLORS: Array[Color] = [
 # --- 音符 ---
 const NOTE_TYPES: Array[String] = ["tap", "drag", "release", "hold", "heart"]
 const NOTE_TYPE_LABELS: Array[String] = ["Tap", "Drag", "Release", "Hold", "Heart"]
+const NOTE_TYPE_TAP: String = "tap"
 const NOTE_TYPE_HOLD: String = "hold"
 const NOTE_TYPE_HEART: String = "heart"
 const HOLD_DEFAULT_DURATION_MS: int = 500

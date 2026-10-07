@@ -10,6 +10,24 @@ extends Control
 const ACTION_INDEX_SPEED: int = 6
 const ACTION_INDEX_ADD_EFFECT: int = 7
 
+# 快捷键：G 切回选择模式，数字键切音符类型。
+# 值就是 List2/NoteItems 的条目索引（0 = 选择，1..5 与 ChartDefs.NOTE_TYPES 依次对齐）
+const SELECT_TOOL_KEY: int = KEY_G
+const NOTE_TOOL_SHORTCUTS: Dictionary = {
+	KEY_1: 1,
+	KEY_2: 2,
+	KEY_3: 3,
+	KEY_4: 4,
+	KEY_5: 5,
+}
+# 快捷键：在 1..4 号轨道的判定线位置放一个蓝键
+const TRACK_PLACEMENT_SHORTCUTS: Dictionary = {
+	KEY_D: 1,
+	KEY_F: 2,
+	KEY_J: 3,
+	KEY_K: 4,
+}
+
 ## 轨道编辑区的最大宽度 = 窗口总宽度 × 该比例；中间区域比它宽时，
 ## 多出来的部分左右平分留白，轨道区居中。轨道是编辑工作面而不是越宽越好，
 ## 超宽屏上放任铺满会让音符被拉得过大，所以留一个上限。
@@ -152,9 +170,18 @@ func _schedule_layout_update() -> void:
 func _on_panel_toggled(_expanded: bool) -> void:
 	_schedule_layout_update()
 
-# 空格键切换播放/暂停，Ctrl+S 保存，Ctrl+Z 撤销，Ctrl+Y 重做
+# 空格键切换播放/暂停，Ctrl+S 保存，Ctrl+Z 撤销，Ctrl+Y 重做，
+# G / 1..5 切工具，d/f/j/k 在四条轨道的判定线位置放蓝键
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		# 焦点在文本框里时不抢按键：否则在标题 / 路径里打字，空格会触发播放、
+		# 数字和字母会切工具、放音符。带 Ctrl / Alt / Cmd 的组合键是命令不是文本，
+		# 照常放行（这样在输入框里 Ctrl+S 仍然能保存）。
+		var has_command_modifier: bool = (
+			event.ctrl_pressed or event.alt_pressed or event.meta_pressed)
+		if _is_text_input_focused() and not has_command_modifier:
+			return
+
 		if event.keycode == KEY_SPACE:
 			_toggle_playback()
 			get_viewport().set_input_as_handled()
@@ -171,6 +198,36 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_Y and event.ctrl_pressed:
 			_redo()
 			get_viewport().set_input_as_handled()
+		elif event.keycode == SELECT_TOOL_KEY:
+			_select_note_tool(0)
+			get_viewport().set_input_as_handled()
+		elif NOTE_TOOL_SHORTCUTS.has(event.keycode):
+			_select_note_tool(NOTE_TOOL_SHORTCUTS[event.keycode])
+			get_viewport().set_input_as_handled()
+		elif TRACK_PLACEMENT_SHORTCUTS.has(event.keycode):
+			_place_note_on_track(TRACK_PLACEMENT_SHORTCUTS[event.keycode])
+			get_viewport().set_input_as_handled()
+
+# --- 快捷键 ---
+
+## 切到「音符」分类并选中第 index 个音符工具（0 = 选择，1..5 与 NOTE_TYPES 对齐）。
+## 先切分类是必须的：「行为」分类下音符按钮是隐藏的，直接按索引选中会被当成行为按钮处理。
+func _select_note_tool(index: int) -> void:
+	list.select(0)
+	list2.select(index)
+
+
+## 在判定线位置放一个蓝键。判定线所在的时间就是视口 / 播放时间（见 VisualGeometry），
+## 所以「判定线位置」就是 EditorState.scroll_time，播放中它会跟着播放头走。
+## 吸附、同轨去重、压撤销点、选中新音符都交给 EditorVisual.place_note —— 与鼠标点击同一条路径。
+func _place_note_on_track(track: int) -> void:
+	visual.place_note(track, EditorState.scroll_time, ChartDefs.NOTE_TYPE_TAP)
+
+
+## 焦点是否在文本输入控件上（标题 / 路径等 LineEdit，以及数字框内部的输入行）
+func _is_text_input_focused() -> bool:
+	var focused := get_viewport().gui_get_focus_owner()
+	return focused is LineEdit or focused is TextEdit or focused is SpinBox
 
 # 用户关闭窗口（标题栏 × / Alt+F4）：先把退出交给 _request_quit() 处理
 func _notification(what: int) -> void:

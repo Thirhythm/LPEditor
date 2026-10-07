@@ -62,6 +62,14 @@ MainEditor（ui/main_editor/main_editor.tscn）
   请求主控制器代劳（弹曲绘 / 音频文件对话框、把播放头回填成预览时间）；
   另有 `panel_toggled` 报告折叠状态，目前没有接收方。
 - 主控制器不持有数据副本，所有读写都落到 `ChartData` / `EditorState`。
+- 快捷键在 `MainEditor._input` 里集中分发：`Space` 播放/暂停、`Ctrl+S` 保存、`Ctrl+Z` / `Ctrl+Y`
+  撤销重做、`G` 与 `1`~`5` 切工具、`D` / `F` / `J` / `K` 在四条轨道的判定线位置放蓝键。
+  两条捷径都复用现成路径而不是另写一份：切工具走 `ToolList.select()`（高亮状态与
+  `item_pressed` 信号都与点击一致），放音符走 `EditorVisual.place_note()`
+  （吸附、同轨去重、压撤销点、选中新音符都在那里）。判定线所在时间就是
+  `EditorState.scroll_time`（见 `VisualGeometry.time_to_y()`），播放中它跟着播放头走。
+  焦点在文本框里时不抢按键，否则在标题 / 路径里打字会触发播放或放音符 ——
+  带 `Ctrl` / `Alt` / `Cmd` 的组合键除外，那是命令不是文本。
 - `TrackUI` 是浮在 `Panel` 之上的独立图层（`clip_contents = true`），启动时与每次窗口尺寸变化、
   属性面板折叠时，`MainEditor._update_layout()` 都会按标尺底部 / 工具栏右侧 / 属性面板左侧 /
   状态栏顶部的**实际位置**重算它的 offsets（而不是把像素写死在场景里），所以轨道区既不压到标尺或

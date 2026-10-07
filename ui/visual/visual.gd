@@ -220,21 +220,28 @@ func _on_left_click(pos: Vector2, force_place: bool) -> void:
 		queue_redraw()
 		return
 
-	_place_note(track, time_ms)
+	place_note(track, time_ms)
 
 func _snap_time(time_ms: int) -> int:
 	return _geom.snap_time(time_ms)
 
-func _place_note(track: int, time_ms: int) -> void:
-	time_ms = _snap_time(time_ms)
+## 在指定轨道与时间放置一个音符，返回是否真的放下了（同轨同刻已有音符则跳过）。
+## 时间会先吸附到量化网格；`note_type` 留空表示用当前工具的类型 —— 鼠标点击走这条，
+## 快捷键 d/f/j/k 会显式传 "tap"，这样在「选择」模式下也能直接放蓝键。
+func place_note(track: int, time_ms: int, note_type: String = "") -> bool:
+	var type := note_type if not note_type.is_empty() else placement_type
+	if type.is_empty():
+		return false
 
+	time_ms = _snap_time(time_ms)
 	if _note_exists_at(track, time_ms):
-		return
+		return false
 
 	EditorState.push_undo_state()
-	var idx := add_note(ChartDefs.make_note(placement_type, time_ms, track))
+	var idx := add_note(ChartDefs.make_note(type, time_ms, track))
 	select_note(idx)
 	emit_signal("note_placed", idx)
+	return true
 
 ## 同一轨道同一时刻只允许一个音符
 func _note_exists_at(track: int, time_ms: int) -> bool:
